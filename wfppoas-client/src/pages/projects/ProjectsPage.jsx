@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
-import { projectService, getCurrentUser, getUserRole } from "../../services/api";
-import Sidebar from "../../components/Sidebar";
-import Header from "../../components/Header";
+import { projectService, getCurrentUser, getUserRole } from "../../services/api"
 import ProjectsList from "./ProjectsList";
 import ProjectDetail from "./ProjectDetail";
 import ProjectModal from "./ProjectModal";
-import { navItems } from "../../config/navigation";
+
 
 
 function ProjectsPage() {
@@ -184,11 +182,7 @@ function ProjectsPage() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    window.location.href = "/";
-  };
+
 
   if (loading && projects.length === 0) {
     return (
@@ -200,10 +194,10 @@ function ProjectsPage() {
 
   return (
     <div className="flex h-screen bg-gray-50 font-sans text-slate-800">
-     <Sidebar navItems={navItems[userRole] || navItems.employee} onLogout={handleLogout} />
+
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header userName={user?.name || "Manager"} />
+       
 
         <main className="flex-1 overflow-y-auto p-8">
           {selectedProject ? (

@@ -10,7 +10,7 @@ class CustomPasswordResetNotification extends ResetPassword
     public function toMail($notifiable): MailMessage
     {
         $resetUrl = rtrim(env('CLIENT_URL', 'http://localhost:5173'), '/')
-            . '/reset-password?token=' . urlencode($this->token)
+            . '/?token=' . urlencode($this->token)
             . '&email=' . urlencode($notifiable->email);
 
         return (new MailMessage)

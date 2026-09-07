@@ -1,5 +1,6 @@
 import { useState } from "react";
 import PropTypes from "prop-types";
+import { projectService } from "../../services/api";
 
 function TeamMemberSection({ projectId, teamMembers, userRole, onAddMember, onRemoveMember }) {
   const [showAddDropdown, setShowAddDropdown] = useState(false);
@@ -8,23 +9,24 @@ function TeamMemberSection({ projectId, teamMembers, userRole, onAddMember, onRe
 
   // Fetch available employees (those not in team)
   const handleShowAddDropdown = async () => {
-    if (showAddDropdown) {
-      setShowAddDropdown(false);
-      return;
-    }
+  if (showAddDropdown) {
+    setShowAddDropdown(false);
+    return;
+  }
 
-    try {
-      setLoadingEmployees(true);
-      // In a real scenario, you'd fetch available employees from backend
-      // For now, we'll handle this when backend provides an endpoint
-      // For Phase A, we can simplify this
-      setShowAddDropdown(true);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoadingEmployees(false);
-    }
-  };
+  try {
+    setLoadingEmployees(true);
+
+    const response = await projectService.getAvailableEmployees(projectId);
+
+    setAvailableEmployees(response.data || []);
+    setShowAddDropdown(true);
+  } catch (error) {
+    console.error("Failed to fetch available employees:", error);
+  } finally {
+    setLoadingEmployees(false);
+  }
+};
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -76,9 +78,28 @@ function TeamMemberSection({ projectId, teamMembers, userRole, onAddMember, onRe
           <p className="text-xs text-gray-500 mb-2">
             💡 Select an employee to add (showing only those not in team):
           </p>
-          <p className="text-xs text-gray-400 italic">
-            Dropdown for available employees coming soon. Please use the API to fetch employees.
-          </p>
+          <select
+            onChange={(e) => {
+              const userId = Number(e.target.value);
+
+              if (userId) {
+                onAddMember(userId);
+                setShowAddDropdown(false);
+              }
+            }}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            defaultValue=""
+          >
+            <option value="" disabled>
+              Select an employee
+            </option>
+
+            {availableEmployees.map((employee) => (
+              <option key={employee.id} value={employee.id}>
+                {employee.name}
+              </option>
+            ))}
+          </select>
           <button
             onClick={() => setShowAddDropdown(false)}
             className="mt-2 rounded-lg border border-gray-300 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100 transition"

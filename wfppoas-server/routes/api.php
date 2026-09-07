@@ -80,6 +80,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/projects/{projectId}/team/{userId}', [ProjectTeamController::class, 'destroy']);
 
         Route::post('/users/{userId}/performance/compute', [PerformanceRecordController::class, 'compute']);
+
+        Route::get('/projects/{projectId}/available-employees',
+        [ProjectTeamController::class, 'availableEmployees']);
+
+        Route::get('/employees', [UserController::class, 'employees']);
+
+        Route::get('/dashboard/performance-overview', [DashboardController::class, 'performanceOverview']);
     });
 
     // Available to everyone logged in (Admin, Manager, or Employee)

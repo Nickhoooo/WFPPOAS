@@ -103,6 +103,9 @@ export const projectService = {
   // Remove a member from project team
   removeTeamMember: (projectId, userId) =>
     apiClient.delete(`/projects/${projectId}/team/${userId}`),
+  
+  getAvailableEmployees: (projectId) =>
+  apiClient.get(`/projects/${projectId}/available-employees`),
 };
 
 // ─────────────────────────────────────────────────────
@@ -143,6 +146,23 @@ export const taskService = {
 // Performance Endpoints
 // ─────────────────────────────────────────────────────
 
+export const milestoneService = {
+  getByProject: (projectId) =>
+    apiClient.get(`/projects/${projectId}/milestones`),
+
+  create: (projectId, data) =>
+    apiClient.post(`/projects/${projectId}/milestones`, data),
+
+  update: (projectId, milestoneId, data) =>
+    apiClient.put(`/projects/${projectId}/milestones/${milestoneId}`, data),
+
+  delete: (projectId, milestoneId) =>
+    apiClient.delete(`/projects/${projectId}/milestones/${milestoneId}`),
+};
+// ─────────────────────────────────────────────────────
+// Milestone Endpoints
+// ─────────────────────────────────────────────────────
+
 export const performanceService = {
   getByEmployee: (userId) =>
     apiClient.get(`/users/${userId}/performance`),
@@ -152,6 +172,14 @@ export const performanceService = {
       period,
       project_id: projectId,
     }),
+};
+
+export const userService = {
+  getAll: () =>
+    apiClient.get("/users"),
+
+  getEmployees: () =>
+    apiClient.get("/employees"),
 };
 
 // ─────────────────────────────────────────────────────
@@ -205,6 +233,9 @@ export const dashboardService = {
   // Get recent activity
   getActivity: () =>
     apiClient.get("/dashboard/activity"),
+
+  getPerformanceOverview: () =>
+  apiClient.get("/dashboard/performance-overview"),
 };
 
 // ─────────────────────────────────────────────────────

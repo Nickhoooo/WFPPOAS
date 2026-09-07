@@ -1,71 +1,211 @@
+import DashboardIcon from "../assets/DashboardIcon.png";
+import UsersIcon from "../assets/UserIcon.png";
+import EmployeesIcon from "../assets/EmployeeIcon.png";
+import ProjectsIcon from "../assets/ProjectsIcon.png";
+import MilestonesIcon from "../assets/MilestonesIcon.png";
+import TasksIcon from "../assets/TasksIcon.png";
+import DocumentsIcon from "../assets/DocumentsIcon.png";
+import PerformanceIcon from "../assets/PerformanceIcon.png";
+import NotificationsIcon from "../assets/NotificationIcon.png";
+import SettingsIcon from "../assets/SettingsIcon.png";
+
+
 export const navItems = {
+
+  // ADMIN
   admin: [
-    { section: "MAIN", items: [{ icon: "🏠", label: "Dashboard", path: "/admin/dashboard" }] },
+    {
+      section: "MAIN",
+      items: [
+        {
+          icon: DashboardIcon,
+          label: "Dashboard",
+          path: "/admin/dashboard",
+        },
+      ],
+    },
     {
       section: "WORKFORCE",
       items: [
-        { icon: "👥", label: "Users", path: "/admin/users" },
-        { icon: "👷", label: "Employees", path: "/admin/employees" },
+        {
+          icon: UsersIcon,
+          label: "Users",
+          path: "/admin/users",
+        },
+        {
+          icon: EmployeesIcon,
+          label: "Employees",
+          path: "/admin/employees",
+        },
       ],
     },
     {
       section: "PROJECT MANAGEMENT",
       items: [
-        { icon: "📁", label: "Projects", path: "/projects" },
-        { icon: "📐", label: "Milestones", path: "/milestones" },
-        { icon: "✓", label: "Tasks", path: "/task" },
+        {
+          icon: ProjectsIcon,
+          label: "Projects",
+          path: "/admin/projects",
+        },
+        {
+          icon: MilestonesIcon,
+          label: "Milestones",
+          path: "/admin/milestones",
+        },
+        {
+          icon: TasksIcon,
+          label: "Tasks",
+          path: "/admin/tasks",
+        },
       ],
     },
-    { section: "DOCUMENTS", items: [{ icon: "📄", label: "Documents", path: "/documents" }] },
-    { section: "ANALYTICS", items: [{ icon: "📊", label: "Performance", path: "/admin/performance" }] },
+    {
+      section: "DOCUMENTS",
+      items: [
+        {
+          icon: DocumentsIcon,
+          label: "Documents",
+          path: "/admin/documents",
+        },
+      ],
+    },
+    {
+      section: "ANALYTICS",
+      items: [
+        {
+          icon: PerformanceIcon,
+          label: "Performance",
+          path: "/admin/performance",
+        },
+      ],
+    },
     {
       section: "SYSTEM",
       items: [
-        { icon: "🔔", label: "Notifications", path: "/admin/notification" },
-        { icon: "⚙️", label: "Settings", path: "/admin/settings" },
+        {
+          icon: NotificationsIcon,
+          label: "Notifications",
+          path: "/admin/notifications",
+        },
+        {
+          icon: SettingsIcon,
+          label: "Settings",
+          path: "/admin/settings",
+        },
       ],
     },
   ],
+
+  // MANAGER
+
   manager: [
-    { section: "MAIN", items: [{ icon: "🏠", label: "Dashboard", path: "/manager/dashboard" }] },
+    {
+      section: "MAIN",
+      items: [
+        {
+          icon: DashboardIcon,
+          label: "Dashboard",
+          path: "/manager/dashboard",
+        },
+      ],
+    },
     {
       section: "PROJECTS",
       items: [
-        { icon: "📁", label: "Projects", path: "/projects" },
-        { icon: "✓", label: "Tasks", path: "/projects" },
-        { icon: "📊", label: "Reports", path: "/manager/dashboard" },
+        {
+          icon: ProjectsIcon,
+          label: "Projects",
+          path: "/manager/projects",
+        },
+        {
+          icon: TasksIcon,
+          label: "Tasks",
+          path: "/manager/tasks",
+        },
+        {
+          icon: MilestonesIcon,
+          label: "Milestones",
+          path: "/manager/milestones",
+        },
       ],
     },
     {
       section: "WORKFORCE",
       items: [
-        { icon: "👥", label: "Team Members", path: "/projects" },
-        { icon: "📄", label: "Documents", path: "/projects" },
+        {
+          icon: DocumentsIcon,
+          label: "Documents",
+          path: "/manager/documents",
+        },
+      ],
+    },
+    {
+      section: "ANALYTICS",
+      items: [
+        {
+          icon: PerformanceIcon,
+          label: "Performance",
+          path: "/manager/performance",
+        },
       ],
     },
     {
       section: "SYSTEM",
       items: [
-        { icon: "🔔", label: "Notifications", path: "/manager/dashboard" },
-        { icon: "⚙️", label: "Settings", path: "/manager/profile" },
+        {
+          icon: NotificationsIcon,
+          label: "Notifications",
+          path: "/manager/notifications",
+        },
+        {
+          icon: SettingsIcon,
+          label: "Settings",
+          path: "/manager/settings",
+        },
       ],
     },
   ],
+
+  // EMPLOYEE
   employee: [
-    { section: "MAIN", items: [{ icon: "🏠", label: "Dashboard", path: "/employee/dashboard" }] },
+    {
+      section: "MAIN",
+      items: [
+        {
+          icon: DashboardIcon,
+          label: "Dashboard",
+          path: "/employee/dashboard",
+        },
+      ],
+    },
     {
       section: "WORK",
       items: [
-        { icon: "🧩", label: "Assigned Tasks", path: "/employee/dashboard" },
-        { icon: "📦", label: "Projects", path: "/projects" },
-        { icon: "📄", label: "Documents", path: "/employee/dashboard" },
+        {
+          icon: TasksIcon,
+          label: "My Tasks",
+          path: "/employee/tasks",
+        },
+        {
+          icon: DocumentsIcon,
+          label: "Documents",
+          path: "/employee/documents",
+        },
       ],
     },
     {
       section: "SYSTEM",
       items: [
-        { icon: "🔔", label: "Notifications", path: "/employee/dashboard" },
-        { icon: "⚙️", label: "Settings", path: "/employee/profile" },
+        {
+          icon: NotificationsIcon,
+          label: "Notifications",
+          path: "/employee/notifications",
+        },
+        {
+          icon: SettingsIcon,
+          label: "Settings",
+          path: "/employee/settings",
+        },
       ],
     },
   ],

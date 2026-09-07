@@ -285,8 +285,7 @@ function Login() {
 
           <p className="relative z-10 mt-3 max-w-sm text-center text-sm leading-relaxed text-slate-300/90 fade-up"
             style={{ animationDelay: ".25s" }}>
-            Workforce Performance and Project Operations Analytics System — para sa
-            mga architectural engineering firms.
+            Workforce Performance and Project Operations Analytics System — Architectural Engineering Firms.
           </p>
 
           <div className="relative z-10 mt-8 flex flex-wrap justify-center gap-2 fade-up"
@@ -303,7 +302,7 @@ function Login() {
           <div className="absolute bottom-6 right-6 z-20" ref={aboutRef}>
             <button onClick={() => setShowAbout((v) => !v)} aria-expanded={showAbout}
               className="flex items-center gap-1.5 text-sm text-slate-400 transition-colors hover:text-white">
-              Tungkol sa System
+              About the System
               <svg className={`h-4 w-4 transition-transform duration-300 ${showAbout ? "rotate-180" : ""}`}
                 fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
@@ -315,14 +314,13 @@ function Login() {
                             transition-all duration-200 ${showAbout
                               ? "scale-100 translate-y-0 opacity-100"
                               : "pointer-events-none scale-95 translate-y-2 opacity-0"}`}>
-              <h3 className="mb-2 font-semibold text-white">Tungkol sa WFPPOAS</h3>
+              <h3 className="mb-2 font-semibold text-white">About WFPPOAS</h3>
               <p className="mb-3 text-sm leading-relaxed text-slate-300">
-                Dinisenyo para sa mga Architectural Engineering firms upang mas mapadali
-                ang pag-manage ng workforce, projects, at tasks.
+                Designed for Architectural Engineering firms to make it easier to manage their workforce, projects, and tasks.
               </p>
               <ul className="list-inside list-disc space-y-1 text-sm text-slate-300">
                 <li>Project & Milestone Tracking</li>
-                <li>Task Assignment at Approval Workflow</li>
+                <li>Task Assignment & Approval Workflow</li>
                 <li>Employee Performance Analytics</li>
                 <li>Document Management</li>
               </ul>

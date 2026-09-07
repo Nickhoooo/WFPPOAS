@@ -18,7 +18,17 @@ class ProjectTeamController extends Controller
         $project = Project::findOrFail($projectId);
 
         $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
+            'user_id' => [
+                'required',
+                'exists:users,id',
+                function ($attribute, $value, $fail) {
+                    $user = \App\Models\User::find($value);
+
+                    if (!$user || $user->role !== 'employee') {
+                        $fail('Employee accounts only can be added to a project team.');
+                    }
+                },
+            ],
         ]);
 
         if ($project->team()->where('user_id', $validated['user_id'])->exists()) {
@@ -36,5 +46,19 @@ class ProjectTeamController extends Controller
         $project->team()->detach($userId);
 
         return response()->json(['message' => 'Naalis na siya sa team.']);
+    }
+    
+    public function availableEmployees($projectId)
+    {
+        $project = Project::findOrFail($projectId);
+
+        $teamMemberIds = $project->team()
+            ->pluck('users.id');
+
+        $employees = \App\Models\User::where('role', 'employee')
+            ->whereNotIn('id', $teamMemberIds)
+            ->get();
+
+        return response()->json($employees);
     }
 }

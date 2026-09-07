@@ -7,6 +7,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Models\Notification;
 use Illuminate\Http\Request;
+use App\Models\PerformanceRecord;
 
 class DashboardController extends Controller
 {
@@ -60,5 +61,26 @@ class DashboardController extends Controller
         return response()->json(
             Notification::latest()->take(5)->get(['id', 'type', 'message', 'created_at'])
         );
+    }
+
+    public function performanceOverview()
+    {
+        $latestPerPerson = PerformanceRecord::selectRaw('MAX(id) as id')
+            ->groupBy('user_id')
+            ->pluck('id');
+
+        $records = PerformanceRecord::whereIn('id', $latestPerPerson)
+            ->with('user')
+            ->get();
+
+        $ranked = $records->sortByDesc('completion_rate')->values();
+
+        $teamAverage = $records->avg('completion_rate');
+
+        return response()->json([
+            'top_performer' => $ranked->first(),
+            'team_average' => round($teamAverage, 2),
+            'ranking' => $ranked,
+        ]);
     }
 }

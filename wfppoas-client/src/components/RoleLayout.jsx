@@ -15,11 +15,18 @@ function RoleLayout({ role }) {
 
   return (
     <div className="flex h-screen bg-gray-50 font-sans text-slate-800">
-      <Sidebar navItems={navItems[role]} onLogout={handleLogout} />
+      {/* Sidebar */}
+      <Sidebar navItems={navItems[role]} />
 
+      {/* Main Area */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Header userName={user?.name || "User"} />
+        {/* Header */}
+        <Header
+          userName={user?.name || "User"}
+          onLogout={handleLogout}
+        />
 
+        {/* Page Content */}
         <main className="flex-1 overflow-y-auto p-8">
           <Outlet />
         </main>

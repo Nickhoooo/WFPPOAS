@@ -144,7 +144,14 @@ class UserController extends Controller
         $user->delete();
 
         return response()->json(['message' => 'Na-delete na ang user.']);
-    }
+            }
+
+            
+            public function employees()
+        {
+            $employees = User::where('role', 'employee')->get();
+            return response()->json($employees);
+        }
 }
 
 //2|SpU6dQnYYzwQEUToFxxrxXPwB0Ltn1fzGz30NXmR882b729a

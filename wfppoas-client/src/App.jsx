@@ -14,6 +14,9 @@ import EmployeeDashboard from "./pages/employee/EmployeeDashboard";
 
 import ProjectsPage from "./pages/projects/ProjectsPage";
 import Profile from "./pages/Profile";
+import TasksPage from "./pages/projects/TasksPage";
+import MilestonesPage from "./pages/projects/MilestonesPage";
+import PerformancePage from "./pages/projects/PerformancePage";
 
 function App() {
   return (
@@ -35,12 +38,13 @@ function App() {
           <Route path="users" element={<Users />} />
           <Route path="profile" element={<Profile />} />
           <Route path="employees" element={<ComingSoon title="Employees" />} />
-          <Route path="milestones" element={<ComingSoon title="Milestones" />} />
-          <Route path="tasks" element={<ComingSoon title="Tasks" />} />
+          <Route path="milestones" element={<MilestonesPage />} />
+          <Route path="tasks" element={<TasksPage />} />
           <Route path="documents" element={<ComingSoon title="Documents" />} />
-          <Route path="performance" element={<ComingSoon title="Performance" />} />
+          <Route path="performance" element={<PerformancePage />} />
           <Route path="notifications" element={<ComingSoon title="Notifications" />} />
           <Route path="settings" element={<ComingSoon title="Settings" />} />
+          <Route path="projects" element={<ProjectsPage />} />
         </Route>
 
         {/* MANAGER */}
@@ -54,12 +58,13 @@ function App() {
         >
           <Route path="dashboard" element={<ManagerDashboard />} />
           <Route path="profile" element={<Profile />} />
-          <Route path="milestones" element={<ComingSoon title="Milestones" />} />
-          <Route path="tasks" element={<ComingSoon title="Tasks" />} />
+          <Route path="milestones" element={<MilestonesPage />} />
+          <Route path="tasks" element={<TasksPage />} />
           <Route path="documents" element={<ComingSoon title="Documents" />} />
-          <Route path="performance" element={<ComingSoon title="Performance" />} />
+          <Route path="performance" element={<PerformancePage />} />
           <Route path="notifications" element={<ComingSoon title="Notifications" />} />
           <Route path="settings" element={<ComingSoon title="Settings" />} />
+          <Route path="projects" element={<ProjectsPage />} />
         </Route>
 
         {/* EMPLOYEE */}
@@ -79,15 +84,6 @@ function App() {
           <Route path="settings" element={<ComingSoon title="Settings" />} />
         </Route>
 
-        {/* SHARED — Admin at Manager pareho makakapasok, walang RoleLayout dahil hiwalay yung component  */}
-        <Route
-          path="/projects"
-          element={
-            <ProtectedRoute allowedRoles={["admin", "manager"]}>
-              <ProjectsPage />
-            </ProtectedRoute>
-          }
-        />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
