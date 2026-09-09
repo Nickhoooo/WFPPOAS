@@ -30,29 +30,50 @@ class DashboardController extends Controller
 }
 
     public function managerSummary(Request $request)
-    {
-        $managerId = $request->user()->id;
+{
+    $managerId = $request->user()->id;
 
-        return response()->json([
-            'total_projects' => Project::where('manager_id', $managerId)->count(),
-            'ongoing_projects' => Project::where('manager_id', $managerId)->where('status', 'ongoing')->count(),
-            'completed_projects' => Project::where('manager_id', $managerId)->where('status', 'completed')->count(),
-            'tasks_for_review' => Task::whereHas('project', function ($query) use ($managerId) {
-                $query->where('manager_id', $managerId);
-            })->where('status', 'for_review')->count(),
-        ]);
-    }
+    $managerTasks = Task::whereHas('project', function ($query) use ($managerId) {
+        $query->where('manager_id', $managerId);
+    });
+
+    return response()->json([
+        'total_projects' => Project::where('manager_id', $managerId)->count(),
+
+        'ongoing_projects' => Project::where('manager_id', $managerId)
+            ->where('status', 'ongoing')
+            ->count(),
+
+        'completed_projects' => Project::where('manager_id', $managerId)
+            ->where('status', 'completed')
+            ->count(),
+
+        'tasks_for_review' => (clone $managerTasks)
+            ->where('status', 'for_review')
+            ->count(),
+
+        'total_tasks' => (clone $managerTasks)->count(),
+
+        'completed_tasks' => (clone $managerTasks)
+            ->where('status', 'completed')
+            ->count(),
+    ]);
+}
 
     public function employeeSummary(Request $request)
     {
         $employeeId = $request->user()->id;
+        $employeeTasks = Task::where('assigned_to', $employeeId)
+            ->whereHas('project.team', function ($query) use ($employeeId) {
+                $query->where('users.id', $employeeId);
+            });
 
         return response()->json([
-            'total_tasks' => Task::where('assigned_to', $employeeId)->count(),
-            'pending_tasks' => Task::where('assigned_to', $employeeId)->where('status', 'pending')->count(),
-            'in_progress_tasks' => Task::where('assigned_to', $employeeId)->where('status', 'in_progress')->count(),
-            'for_review_tasks' => Task::where('assigned_to', $employeeId)->where('status', 'for_review')->count(),
-            'completed_tasks' => Task::where('assigned_to', $employeeId)->where('status', 'completed')->count(),
+            'total_tasks' => (clone $employeeTasks)->count(),
+            'pending_tasks' => (clone $employeeTasks)->where('status', 'pending')->count(),
+            'in_progress_tasks' => (clone $employeeTasks)->where('status', 'in_progress')->count(),
+            'for_review_tasks' => (clone $employeeTasks)->where('status', 'for_review')->count(),
+            'completed_tasks' => (clone $employeeTasks)->where('status', 'completed')->count(),
         ]);
     }
 
@@ -63,9 +84,10 @@ class DashboardController extends Controller
         );
     }
 
-    public function performanceOverview()
+    public function performanceOverview(Request $request)
     {
         $latestPerPerson = PerformanceRecord::selectRaw('MAX(id) as id')
+            ->visibleTo($request->user())
             ->groupBy('user_id')
             ->pluck('id');
 

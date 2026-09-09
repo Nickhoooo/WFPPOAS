@@ -24,6 +24,15 @@ class PerformanceRecord extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function scopeVisibleTo($query, User $user)
+    {
+        if ($user->role !== 'admin') {
+            $query->whereIn('project_id', Project::where('manager_id', $user->id)->select('id'));
+        }
+
+        return $query;
+    }
+
     public function evaluator()
     {
         return $this->belongsTo(User::class, 'evaluated_by');

@@ -1,10 +1,11 @@
 import PropTypes from "prop-types";
 import TeamMemberSection from "./TeamMemberSection";
+import { getCurrentUser } from "../../services/api";
+import { canManageProject } from "../../utils/projectPermissions";
 
 function ProjectDetail({
   project,
   teamMembers,
-  userRole,
   onBack,
   onEdit,
   onDelete,
@@ -13,6 +14,7 @@ function ProjectDetail({
   error,
   onErrorClear,
 }) {
+  const canManage = canManageProject(getCurrentUser(), project);
   const statusBadges = {
     ongoing: { label: "✅ Ongoing", color: "text-green-600" },
     "on-hold": { label: "⏸ On-hold", color: "text-yellow-600" },
@@ -44,7 +46,7 @@ function ProjectDetail({
           </div>
         </div>
 
-        {userRole === "manager" && (
+        {canManage && (
           <div className="flex gap-2">
             <button
               onClick={onEdit}
@@ -61,6 +63,8 @@ function ProjectDetail({
           </div>
         )}
       </div>
+
+      {!canManage && <p className="text-sm text-slate-500">Read-only: only the project manager or an admin can manage this project.</p>}
 
       {error && (
         <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -79,24 +83,34 @@ function ProjectDetail({
         <h3 className="mb-4 text-sm font-semibold text-gray-700">📋 PROJECT INFORMATION</h3>
 
         <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <p className="text-gray-500">Status</p>
-            <p className={`font-semibold ${status.color}`}>{status.label}</p>
-          </div>
-          <div>
-            <p className="text-gray-500">Budget</p>
-            <p className="font-semibold text-slate-900">
-              {project.budget ? `₱${Number(project.budget).toLocaleString()}` : "N/A"}
-            </p>
-          </div>
-          <div>
-            <p className="text-gray-500">Start Date</p>
-            <p className="font-semibold text-slate-900">{formatDate(project.start_date)}</p>
-          </div>
-          <div>
-            <p className="text-gray-500">End Date</p>
-            <p className="font-semibold text-slate-900">{formatDate(project.end_date)}</p>
-          </div>
+         <div>
+        <p className="text-gray-500">Location</p>
+        <p className="font-semibold">
+          {project.location || "N/A"}
+        </p>
+      </div>
+
+      <div>
+        <p className="text-gray-500">Status</p>
+        <p className="font-semibold">{project.status}</p>
+      </div>
+
+      <div>
+        <p className="text-gray-500">Budget</p>
+        <p className="font-semibold">
+          {project.budget ? `₱${project.budget}` : "N/A"}
+        </p>
+      </div>
+
+      <div>
+        <p className="text-gray-500">Start Date</p>
+        <p className="font-semibold">{project.start_date || "N/A"}</p>
+      </div>
+
+      <div>
+        <p className="text-gray-500">End Date</p>
+        <p className="font-semibold">{project.end_date || "N/A"}</p>
+      </div>
         </div>
 
         {project.description && (
@@ -111,7 +125,8 @@ function ProjectDetail({
       <TeamMemberSection
         projectId={project.id}
         teamMembers={teamMembers}
-        userRole={userRole}
+        canManage={canManage}
+        managerId={project.manager_id}
         onAddMember={onAddTeamMember}
         onRemoveMember={onRemoveTeamMember}
       />
@@ -134,7 +149,6 @@ function ProjectDetail({
 ProjectDetail.propTypes = {
   project: PropTypes.object.isRequired,
   teamMembers: PropTypes.array.isRequired,
-  userRole: PropTypes.string.isRequired,
   onBack: PropTypes.func.isRequired,
   onEdit: PropTypes.func.isRequired,
   onDelete: PropTypes.func.isRequired,

@@ -18,18 +18,20 @@ function ProjectModal({ isOpen, project, onClose, onSubmit, loading, error }) {
   useEffect(() => {
     if (project) {
       setFormData({
-        project_name: project.project_name || "",
-        client_name: project.client_name || "",
-        description: project.description || "",
-        budget: project.budget || "",
-        start_date: project.start_date ? project.start_date.split("T")[0] : "",
-        end_date: project.end_date ? project.end_date.split("T")[0] : "",
-        status: project.status || "ongoing",
-      });
+      project_name: project.project_name || "",
+      client_name: project.client_name || "",
+      location: project.location || "",
+      description: project.description || "",
+      budget: project.budget || "",
+      start_date: project.start_date || "",
+      end_date: project.end_date || "",
+      status: project.status || "ongoing",
+    });
     } else {
       setFormData({
         project_name: "",
         client_name: "",
+        location: "",
         description: "",
         budget: "",
         start_date: "",
@@ -49,6 +51,10 @@ function ProjectModal({ isOpen, project, onClose, onSubmit, loading, error }) {
       setValidationError("Client name is required.");
       return false;
     }
+    if (!formData.location.trim()) {
+    setValidationError("Project location is required.");
+    return false;
+  }
     if (formData.start_date && formData.end_date) {
       if (new Date(formData.end_date) < new Date(formData.start_date)) {
         setValidationError("End date must be after or equal to start date.");
@@ -147,6 +153,24 @@ function ProjectModal({ isOpen, project, onClose, onSubmit, loading, error }) {
               required
             />
           </div>
+
+          {/**Project Location */}
+
+          <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Project Location <span className="text-red-500">*</span>
+        </label>
+
+        <input
+          type="text"
+          name="location"
+          value={formData.location}
+          onChange={handleChange}
+          placeholder="e.g. Quezon City, Metro Manila"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-800"
+          required
+        />
+      </div>
 
           {/* Description */}
           <div>

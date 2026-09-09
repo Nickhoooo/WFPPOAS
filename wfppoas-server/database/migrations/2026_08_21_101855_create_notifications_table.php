@@ -11,14 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-    Schema::create('notifications', function (Blueprint $table) {
-        $table->id();
-        $table->foreignId('user_id')->constrained()->onDelete('cascade');
-        $table->text('message');
-        $table->string('type')->nullable();
-        $table->boolean('is_read')->default(false);
-        $table->timestamps();
-    });
+    Schema::table('notifications', function (Blueprint $table) {
+    $table->foreignId('project_id')
+        ->nullable()
+        ->after('user_id')
+        ->constrained()
+        ->onDelete('cascade');
+
+    $table->foreignId('task_id')
+        ->nullable()
+        ->after('project_id')
+        ->constrained()
+        ->onDelete('cascade');
+});
     }
 
     /**

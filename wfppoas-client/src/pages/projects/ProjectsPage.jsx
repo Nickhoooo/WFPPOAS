@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { projectService, getCurrentUser, getUserRole } from "../../services/api"
+import { projectService, getUserRole } from "../../services/api"
 import ProjectsList from "./ProjectsList";
 import ProjectDetail from "./ProjectDetail";
 import ProjectModal from "./ProjectModal";
@@ -20,7 +20,6 @@ function ProjectsPage() {
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState("");
 
-  const user = getCurrentUser();
   const userRole = getUserRole();
 
   // Fetch projects on mount
@@ -145,7 +144,7 @@ function ProjectsPage() {
       setError("");
     } catch (err) {
       console.error(err);
-      setError("Hindi ma-delete ang project. Subukan ulit mamaya.");
+      setError(err.response?.data?.message || "Hindi ma-delete ang project. Subukan ulit mamaya.");
     } finally {
       setLoading(false);
     }
@@ -178,7 +177,7 @@ function ProjectsPage() {
       setTeamMembers(teamResponse.data || []);
     } catch (err) {
       console.error(err);
-      setError("Hindi ma-remove ang team member.");
+      setError(err.response?.data?.message || "Hindi ma-remove ang team member.");
     }
   };
 
@@ -205,7 +204,6 @@ function ProjectsPage() {
             <ProjectDetail
               project={selectedProject}
               teamMembers={teamMembers}
-              userRole={userRole}
               onBack={handleBackToList}
               onEdit={() => handleOpenModal(selectedProject)}
               onDelete={() => handleDeleteProject(selectedProject.id)}

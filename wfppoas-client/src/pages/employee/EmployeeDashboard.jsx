@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  dashboardService,
+  taskService,
+  documentService,
+  getCurrentUser,
+} from "../../services/api";
+import {
   Activity,
   CalendarDays,
   Check,
@@ -16,12 +22,6 @@ import {
   UserRound,
 } from "lucide-react";
 
-import {
-  dashboardService,
-  taskService,
-  getCurrentUser,
-} from "../../services/api";
-
 function EmployeeDashboard() {
   const [summary, setSummary] = useState({
     total_tasks: 0,
@@ -37,6 +37,11 @@ function EmployeeDashboard() {
   const [updatingTaskId, setUpdatingTaskId] = useState(null);
   const [progressInputs, setProgressInputs] = useState({});
   const [actionError, setActionError] = useState("");
+  const [submittingTask, setSubmittingTask] = useState(null);
+  const [submitFile, setSubmitFile] = useState(null);
+  const [submitComment, setSubmitComment] = useState("");
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const user = getCurrentUser();
 
@@ -141,17 +146,51 @@ function EmployeeDashboard() {
   // --------------------------------------------------
   // SUBMIT FOR REVIEW
   // --------------------------------------------------
-  const handleSubmitForReview = async (task) => {
-    setUpdatingTaskId(task.id);
-    setActionError("");
+  const openSubmitModal = (task) => {
+    setSubmittingTask(task);
+    setSubmitFile(null);
+    setSubmitComment("");
+    setSubmitError("");
+  };
+
+  const handleSubmitForReview = async (e) => {
+    e.preventDefault();
+
+    if (!submitFile) {
+      setSubmitError("Kailangan ng proof file bago mag-submit.");
+      return;
+    }
+
+    setSubmitLoading(true);
+    setSubmitError("");
 
     try {
-      await taskService.submitForReview(task.projectId, task.id);
-      await refreshTasks();
+      const formData = new FormData();
+
+      formData.append("file", submitFile);
+      formData.append("file_type", "drawing");
+      formData.append("task_id", submittingTask.id);
+
+      await documentService.upload(
+        submittingTask.projectId,
+        formData
+      );
+
+      await taskService.submitForReview(
+        submittingTask.projectId,
+        submittingTask.id,
+        submitComment
+      );
+
+      setSubmittingTask(null);
+      refreshTasks();
     } catch (err) {
-      setActionError("Hindi ma-submit ang task.");
+      setSubmitError(
+        err.response?.data?.message ||
+          "Hindi ma-submit ang task."
+      );
     } finally {
-      setUpdatingTaskId(null);
+      setSubmitLoading(false);
     }
   };
 
@@ -196,11 +235,9 @@ function EmployeeDashboard() {
   // STATS
   // --------------------------------------------------
   const stats = useMemo(() => {
-    const total =
-      summary.total_tasks ?? tasks.length;
+    const total = summary.total_tasks ?? tasks.length;
 
-    const pending =
-      summary.pending_tasks ?? 0;
+    const pending = summary.pending_tasks ?? 0;
 
     const inProgress =
       summary.in_progress_tasks ?? 0;
@@ -648,20 +685,12 @@ function EmployeeDashboard() {
                         </div>
 
                         <button
-                          onClick={() =>
-                            handleSubmitForReview(task)
-                          }
-                          disabled={
-                            updatingTaskId === task.id
-                          }
-                          className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 px-3 py-2.5 text-xs font-medium text-white transition hover:bg-slate-800 disabled:opacity-60"
+                          onClick={() => openSubmitModal(task)}
+                          className="mt-3 w-full rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800"
                         >
-                          <Send size={14} />
-
-                          {updatingTaskId === task.id
-                            ? "Submitting..."
-                            : "Submit for Review"}
+                          Submit for Review
                         </button>
+
                       </div>
                     )}
 
@@ -684,13 +713,102 @@ function EmployeeDashboard() {
                         </div>
                       </div>
                     )}
+
                   </div>
                 );
               })}
+
             </div>
           )}
+
         </div>
       </div>
+
+      {/* ==========================================
+          SUBMIT FOR REVIEW MODAL
+      ========================================== */}
+      {submittingTask && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+
+            <h3 className="text-lg font-semibold text-slate-900">
+              Submit Task for Review
+            </h3>
+
+            <p className="mt-1 text-sm text-gray-500">
+              {submittingTask.title}
+            </p>
+
+            {submitError && (
+              <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                {submitError}
+              </p>
+            )}
+
+            <form
+              onSubmit={handleSubmitForReview}
+              className="mt-4 space-y-4"
+            >
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Proof of Completion *
+                </label>
+
+                <input
+                  type="file"
+                  onChange={(e) =>
+                    setSubmitFile(e.target.files[0])
+                  }
+                  required
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Comment (optional)
+                </label>
+
+                <textarea
+                  value={submitComment}
+                  onChange={(e) =>
+                    setSubmitComment(e.target.value)
+                  }
+                  rows={3}
+                  placeholder="Add a note for your manager"
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+
+                <button
+                  type="button"
+                  onClick={() => setSubmittingTask(null)}
+                  disabled={submitLoading}
+                  className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={submitLoading}
+                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+                >
+                  {submitLoading
+                    ? "Uploading..."
+                    : "Submit for Review"}
+                </button>
+
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

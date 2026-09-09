@@ -15,8 +15,9 @@ import {
 import {
   projectService,
   milestoneService,
-  getUserRole,
+  getCurrentUser,
 } from "../../services/api";
+import { canManageProject } from "../../utils/projectPermissions";
 
 import MilestonesPageSkeleton from "../../components/skeletons/MilestonesPage";
 
@@ -40,8 +41,7 @@ function MilestonesPage() {
     due_date: "",
   });
 
-  const userRole = getUserRole();
-  const isManager = userRole === "manager";
+  const canManage = canManageProject(getCurrentUser(), projects.find((project) => String(project.id) === String(selectedProjectId)));
 
   useEffect(() => {
     projectService
@@ -224,13 +224,13 @@ function MilestonesPage() {
           </div>
 
           <p className="mt-2 text-sm text-slate-500">
-            {isManager
+            {canManage
               ? "Manage project phases and track milestone progress."
               : "View project phases and milestone progress."}
           </p>
         </div>
 
-        {isManager && selectedProjectId && (
+        {canManage && selectedProjectId && (
           <button
             onClick={openCreateModal}
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800"
@@ -261,7 +261,7 @@ function MilestonesPage() {
 
         <select
           value={selectedProjectId}
-          onChange={(e) => setSelectedProjectId(e.target.value)}
+          onChange={(e) => { setSelectedProjectId(e.target.value); setShowModal(false); setMilestones([]); }}
           className="mt-4 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
         >
           <option value="">-- Pumili ng project --</option>
@@ -428,7 +428,7 @@ function MilestonesPage() {
                     Wala pang milestones sa project na ito.
                   </p>
 
-                  {isManager && (
+                  {canManage && (
                     <button
                       onClick={openCreateModal}
                       className="mt-5 inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-xs font-medium text-white transition hover:bg-slate-800"
@@ -493,7 +493,7 @@ function MilestonesPage() {
                         </div>
 
                         {/* ACTIONS */}
-                        {isManager && (
+                        {canManage && (
                           <div className="mt-5 flex justify-end gap-2 border-t border-slate-100 pt-4">
                             <button
                               onClick={() => openEditModal(m)}
@@ -540,7 +540,7 @@ function MilestonesPage() {
       )}
 
       {/* CREATE / EDIT MODAL */}
-      {showModal && (
+      {showModal && canManage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
             {/* MODAL HEADER */}

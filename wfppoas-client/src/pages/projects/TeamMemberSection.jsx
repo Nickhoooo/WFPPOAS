@@ -2,7 +2,7 @@ import { useState } from "react";
 import PropTypes from "prop-types";
 import { projectService } from "../../services/api";
 
-function TeamMemberSection({ projectId, teamMembers, userRole, onAddMember, onRemoveMember }) {
+function TeamMemberSection({ projectId, teamMembers, canManage, managerId, onAddMember, onRemoveMember }) {
   const [showAddDropdown, setShowAddDropdown] = useState(false);
   const [availableEmployees, setAvailableEmployees] = useState([]);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
@@ -32,7 +32,7 @@ function TeamMemberSection({ projectId, teamMembers, userRole, onAddMember, onRe
     <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-gray-700">👥 TEAM MEMBERS</h3>
-        {userRole === "manager" && (
+        {canManage && (
           <button
             onClick={handleShowAddDropdown}
             className="rounded-lg bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 transition"
@@ -55,10 +55,10 @@ function TeamMemberSection({ projectId, teamMembers, userRole, onAddMember, onRe
               <div>
                 <p className="text-sm font-medium text-slate-800">{member.name}</p>
                 <p className="text-xs text-gray-400">
-                  {member.role === "manager" ? "🔑 Manager (Locked)" : `👤 ${member.role || "Employee"}`}
+                  {Number(member.id) === Number(managerId) ? "🔑 Project Manager (Locked)" : `👤 ${member.role || "Employee"}`}
                 </p>
               </div>
-              {userRole === "manager" && member.role !== "manager" && (
+              {canManage && Number(member.id) !== Number(managerId) && (
                 <button
                   onClick={() => onRemoveMember(member.id)}
                   className="text-red-600 hover:text-red-700 font-bold transition"
@@ -73,7 +73,7 @@ function TeamMemberSection({ projectId, teamMembers, userRole, onAddMember, onRe
       </div>
 
       {/* Add Member Dropdown Placeholder */}
-      {showAddDropdown && userRole === "manager" && (
+      {showAddDropdown && canManage && (
         <div className="mt-4 border-t border-gray-200 pt-4">
           <p className="text-xs text-gray-500 mb-2">
             💡 Select an employee to add (showing only those not in team):
@@ -115,7 +115,8 @@ function TeamMemberSection({ projectId, teamMembers, userRole, onAddMember, onRe
 TeamMemberSection.propTypes = {
   projectId: PropTypes.number.isRequired,
   teamMembers: PropTypes.array.isRequired,
-  userRole: PropTypes.string.isRequired,
+  canManage: PropTypes.bool.isRequired,
+  managerId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
   onAddMember: PropTypes.func.isRequired,
   onRemoveMember: PropTypes.func.isRequired,
 };

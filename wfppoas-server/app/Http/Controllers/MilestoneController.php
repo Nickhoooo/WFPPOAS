@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Milestone;
 use App\Models\Project;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class MilestoneController extends Controller
 {
@@ -25,7 +26,8 @@ class MilestoneController extends Controller
 
     public function store(Request $request, $projectId)
     {
-        Project::findOrFail($projectId);
+        $project = Project::findOrFail($projectId);
+        Gate::authorize('manage', $project);
 
         $validated = $request->validate([
             'phase_name' => 'required|string|max:255',
@@ -43,6 +45,7 @@ class MilestoneController extends Controller
 
     public function update(Request $request, $projectId, $id)
     {
+        Gate::authorize('manage', Project::findOrFail($projectId));
         $milestone = Milestone::where('project_id', $projectId)->findOrFail($id);
 
         $validated = $request->validate([
@@ -59,6 +62,7 @@ class MilestoneController extends Controller
 
     public function destroy($projectId, $id)
     {
+        Gate::authorize('manage', Project::findOrFail($projectId));
         $milestone = Milestone::where('project_id', $projectId)->findOrFail($id);
         $milestone->delete();
 

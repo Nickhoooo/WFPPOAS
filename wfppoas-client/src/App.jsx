@@ -17,6 +17,9 @@ import Profile from "./pages/Profile";
 import TasksPage from "./pages/projects/TasksPage";
 import MilestonesPage from "./pages/projects/MilestonesPage";
 import PerformancePage from "./pages/projects/PerformancePage";
+import MyTeam from "./pages/employee/MyTeam";
+import MyTasks from "./pages/employee/MyTasks";
+import DocumentsPage from "./pages/DocumentsPage";
 
 function App() {
   return (
@@ -40,9 +43,11 @@ function App() {
           <Route path="employees" element={<ComingSoon title="Employees" />} />
           <Route path="milestones" element={<MilestonesPage />} />
           <Route path="tasks" element={<TasksPage />} />
-          <Route path="documents" element={<ComingSoon title="Documents" />} />
+          <Route
+          path="/admin/documents"
+          element={<DocumentsPage />}
+        />
           <Route path="performance" element={<PerformancePage />} />
-          <Route path="notifications" element={<ComingSoon title="Notifications" />} />
           <Route path="settings" element={<ComingSoon title="Settings" />} />
           <Route path="projects" element={<ProjectsPage />} />
         </Route>
@@ -60,11 +65,15 @@ function App() {
           <Route path="profile" element={<Profile />} />
           <Route path="milestones" element={<MilestonesPage />} />
           <Route path="tasks" element={<TasksPage />} />
-          <Route path="documents" element={<ComingSoon title="Documents" />} />
+          <Route
+          path="/manager/documents"
+          element={<DocumentsPage />}
+        />
           <Route path="performance" element={<PerformancePage />} />
-          <Route path="notifications" element={<ComingSoon title="Notifications" />} />
           <Route path="settings" element={<ComingSoon title="Settings" />} />
           <Route path="projects" element={<ProjectsPage />} />
+
+          
         </Route>
 
         {/* EMPLOYEE */}
@@ -78,9 +87,12 @@ function App() {
         >
           <Route path="dashboard" element={<EmployeeDashboard />} />
           <Route path="profile" element={<Profile />} />
-          <Route path="tasks" element={<ComingSoon title="My Tasks" />} />
-          <Route path="documents" element={<ComingSoon title="Documents" />} />
-          <Route path="notifications" element={<ComingSoon title="Notifications" />} />
+          <Route path="tasks" element={<MyTasks />} />
+         <Route path="team" element={<MyTeam />} />
+          <Route
+            path="/employee/documents"
+            element={<DocumentsPage />}
+          />
           <Route path="settings" element={<ComingSoon title="Settings" />} />
         </Route>
 

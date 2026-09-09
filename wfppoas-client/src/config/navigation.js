@@ -6,12 +6,9 @@ import MilestonesIcon from "../assets/MilestonesIcon.png";
 import TasksIcon from "../assets/TasksIcon.png";
 import DocumentsIcon from "../assets/DocumentsIcon.png";
 import PerformanceIcon from "../assets/PerformanceIcon.png";
-import NotificationsIcon from "../assets/NotificationIcon.png";
 import SettingsIcon from "../assets/SettingsIcon.png";
 
-
 export const navItems = {
-
   // ADMIN
   admin: [
     {
@@ -24,6 +21,7 @@ export const navItems = {
         },
       ],
     },
+
     {
       section: "WORKFORCE",
       items: [
@@ -39,6 +37,7 @@ export const navItems = {
         },
       ],
     },
+
     {
       section: "PROJECT MANAGEMENT",
       items: [
@@ -59,6 +58,7 @@ export const navItems = {
         },
       ],
     },
+
     {
       section: "DOCUMENTS",
       items: [
@@ -69,6 +69,7 @@ export const navItems = {
         },
       ],
     },
+
     {
       section: "ANALYTICS",
       items: [
@@ -79,14 +80,10 @@ export const navItems = {
         },
       ],
     },
+
     {
       section: "SYSTEM",
       items: [
-        {
-          icon: NotificationsIcon,
-          label: "Notifications",
-          path: "/admin/notifications",
-        },
         {
           icon: SettingsIcon,
           label: "Settings",
@@ -97,7 +94,6 @@ export const navItems = {
   ],
 
   // MANAGER
-
   manager: [
     {
       section: "MAIN",
@@ -109,6 +105,7 @@ export const navItems = {
         },
       ],
     },
+
     {
       section: "PROJECTS",
       items: [
@@ -129,6 +126,7 @@ export const navItems = {
         },
       ],
     },
+
     {
       section: "WORKFORCE",
       items: [
@@ -139,6 +137,7 @@ export const navItems = {
         },
       ],
     },
+
     {
       section: "ANALYTICS",
       items: [
@@ -149,14 +148,10 @@ export const navItems = {
         },
       ],
     },
+
     {
       section: "SYSTEM",
       items: [
-        {
-          icon: NotificationsIcon,
-          label: "Notifications",
-          path: "/manager/notifications",
-        },
         {
           icon: SettingsIcon,
           label: "Settings",
@@ -178,6 +173,7 @@ export const navItems = {
         },
       ],
     },
+
     {
       section: "WORK",
       items: [
@@ -187,20 +183,21 @@ export const navItems = {
           path: "/employee/tasks",
         },
         {
+          icon: UsersIcon,
+          label: "My Team",
+          path: "/employee/team",
+        },
+        {
           icon: DocumentsIcon,
           label: "Documents",
           path: "/employee/documents",
         },
       ],
     },
+
     {
       section: "SYSTEM",
       items: [
-        {
-          icon: NotificationsIcon,
-          label: "Notifications",
-          path: "/employee/notifications",
-        },
         {
           icon: SettingsIcon,
           label: "Settings",

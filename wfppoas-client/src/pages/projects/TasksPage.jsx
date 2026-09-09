@@ -1,77 +1,140 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
-  Activity,
-  CalendarDays,
-  Check,
-  CircleCheck,
-  CircleDot,
-  ClipboardList,
-  Clock3,
-  Eye,
-  Flag,
-  FolderKanban,
-  ListTodo,
-  MessageSquare,
-  Plus,
   Search,
-  UserRound,
+  Plus,
+  ClipboardList,
+  CalendarDays,
+  User,
+  Check,
   X,
-  XCircle,
+  AlertCircle,
 } from "lucide-react";
 
 import {
   projectService,
   taskService,
-  getUserRole,
+  documentService,
+  getCurrentUser,
 } from "../../services/api";
-
-import TasksPageSkeleton from "../../components/skeletons/TasksPageSkeleton";
+import { canManageProject } from "../../utils/projectPermissions";
 
 function TasksPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [projects, setProjects] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState("");
+
   const [teamMembers, setTeamMembers] = useState([]);
   const [tasks, setTasks] = useState([]);
+
   const [loading, setLoading] = useState(true);
   const [tasksLoading, setTasksLoading] = useState(false);
+
   const [error, setError] = useState("");
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const [showModal, setShowModal] = useState(false);
-  const [modalLoading, setModalLoading] = useState(false);
-  const [modalError, setModalError] = useState("");
+  // Notification target task
+  const [targetTaskId, setTargetTaskId] = useState(null);
 
-  const [newTask, setNewTask] = useState({
+  // Create task modal
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  // Review task modal
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewTask, setReviewTask] = useState(null);
+
+  // Reject modal
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [managerComment, setManagerComment] = useState("");
+
+  // Create task form
+  const [formData, setFormData] = useState({
     task_name: "",
     description: "",
     assigned_to: "",
     priority: "medium",
     deadline: "",
+    milestone_id: "",
   });
 
-  const [rejectingTask, setRejectingTask] = useState(null);
-  const [rejectComment, setRejectComment] = useState("");
-  const [rejectError, setRejectError] = useState("");
+  const canManage = canManageProject(getCurrentUser(), projects.find((project) => String(project.id) === String(selectedProjectId)));
 
-  const userRole = getUserRole();
-  const isManager = userRole === "manager";
-
-  // --------------------------------------------------
-  // LOAD PROJECTS
-  // --------------------------------------------------
+  /*
+  |--------------------------------------------------------------------------
+  | Handle Notification Navigation
+  |--------------------------------------------------------------------------
+  |
+  | Example:
+  | /manager/tasks?project=5&task=23
+  |
+  | The notification sends the manager to the correct project and task.
+  |
+  */
   useEffect(() => {
-    projectService
-      .getAll()
-      .then((res) => setProjects(res.data || []))
-      .catch(() => setError("Hindi ma-load ang projects."))
-      .finally(() => setLoading(false));
+    const projectId = searchParams.get("project");
+    const taskId = searchParams.get("task");
+
+    if (!projectId) {
+      return;
+    }
+
+    setSelectedProjectId(String(projectId));
+
+    // Make sure the target task is visible
+    // even if filters were previously active.
+    setSearch("");
+    setStatusFilter("all");
+
+    if (taskId) {
+      setTargetTaskId(String(taskId));
+    }
+
+    // Remove query parameters after reading them.
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Load Projects
+  |--------------------------------------------------------------------------
+  */
+  useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const response = await projectService.getAll();
+
+        const projectList = response.data || [];
+
+        setProjects(projectList);
+
+        // Automatically select the first project
+        // only when there is no project selected yet.
+        if (projectList.length > 0 && !selectedProjectId) {
+          setSelectedProjectId(String(projectList[0].id));
+        }
+      } catch (err) {
+        console.error("Failed to load projects:", err);
+        setError("Failed to load projects.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProjects();
   }, []);
 
-  // --------------------------------------------------
-  // LOAD TASKS + TEAM
-  // --------------------------------------------------
+  /*
+  |--------------------------------------------------------------------------
+  | Load Tasks + Team Members
+  |--------------------------------------------------------------------------
+  */
   useEffect(() => {
     if (!selectedProjectId) {
       setTasks([]);
@@ -79,196 +142,113 @@ function TasksPage() {
       return;
     }
 
-    setTasksLoading(true);
-    setError("");
+    const loadProjectData = async () => {
+      try {
+        setTasksLoading(true);
+        setError("");
 
-    Promise.all([
-      taskService.getByProject(selectedProjectId),
-      projectService.getTeam(selectedProjectId),
-    ])
-      .then(([tasksRes, teamRes]) => {
-        setTasks(tasksRes.data || []);
-        setTeamMembers(teamRes.data || []);
-      })
-      .catch(() => setError("Hindi ma-load ang tasks."))
-      .finally(() => setTasksLoading(false));
+        const [tasksResponse, teamResponse] = await Promise.all([
+          taskService.getByProject(selectedProjectId),
+          projectService.getTeamEmployees(selectedProjectId),
+        ]);
+
+        setTasks(tasksResponse.data || []);
+        setTeamMembers(teamResponse.data || []);
+      } catch (err) {
+        console.error("Failed to load project tasks:", err);
+
+        setError(
+          err.response?.data?.message ||
+            "Failed to load tasks."
+        );
+
+        setTasks([]);
+        setTeamMembers([]);
+      } finally {
+        setTasksLoading(false);
+      }
+    };
+
+    loadProjectData();
   }, [selectedProjectId]);
 
-  // --------------------------------------------------
-  // REFRESH
-  // --------------------------------------------------
-  const refreshTasks = () => {
-    if (!selectedProjectId) return;
+  /*
+  |--------------------------------------------------------------------------
+  | Scroll to Notification Target Task
+  |--------------------------------------------------------------------------
+  */
+  useEffect(() => {
+    if (!targetTaskId || tasks.length === 0) {
+      return;
+    }
 
-    taskService
-      .getByProject(selectedProjectId)
-      .then((res) => setTasks(res.data || []))
-      .catch(() => setError("Hindi ma-refresh ang tasks."));
-  };
+    const timer = setTimeout(() => {
+      const taskElement = document.getElementById(
+        `task-${targetTaskId}`
+      );
 
-  // --------------------------------------------------
-  // CREATE TASK
-  // --------------------------------------------------
-  const handleCreateTask = async (e) => {
-    e.preventDefault();
+      if (!taskElement) {
+        return;
+      }
 
-    setModalLoading(true);
-    setModalError("");
-
-    try {
-      await taskService.create(selectedProjectId, newTask);
-
-      setShowModal(false);
-
-      setNewTask({
-        task_name: "",
-        description: "",
-        assigned_to: "",
-        priority: "medium",
-        deadline: "",
+      taskElement.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
       });
 
-      refreshTasks();
-    } catch (err) {
-      setModalError(
-        err.response?.data?.message || "Hindi ma-create ang task."
-      );
-    } finally {
-      setModalLoading(false);
-    }
-  };
-
-  // --------------------------------------------------
-  // APPROVE
-  // --------------------------------------------------
-  const handleApprove = async (taskId) => {
-    try {
-      await taskService.approve(selectedProjectId, taskId);
-      refreshTasks();
-    } catch (err) {
-      setError("Hindi ma-approve ang task.");
-    }
-  };
-
-  // --------------------------------------------------
-  // REJECT
-  // --------------------------------------------------
-  const openRejectModal = (task) => {
-    setRejectingTask(task);
-    setRejectComment("");
-    setRejectError("");
-  };
-
-  const handleReject = async (e) => {
-    e.preventDefault();
-
-    try {
-      await taskService.reject(
-        selectedProjectId,
-        rejectingTask.id,
-        rejectComment
+      taskElement.classList.add(
+        "ring-2",
+        "ring-blue-500",
+        "ring-offset-2"
       );
 
-      setRejectingTask(null);
-      refreshTasks();
-    } catch (err) {
-      setRejectError("Hindi ma-reject ang task.");
-    }
-  };
+      const removeHighlightTimer = setTimeout(() => {
+        taskElement.classList.remove(
+          "ring-2",
+          "ring-blue-500",
+          "ring-offset-2"
+        );
 
-  // --------------------------------------------------
-  // STATUS CONFIG
-  // --------------------------------------------------
-  const statusConfig = {
-    pending: {
-      label: "Pending",
-      icon: Clock3,
-      badge: "bg-slate-100 text-slate-600",
-      iconBg: "bg-slate-100",
-      iconColor: "text-slate-500",
-    },
+        setTargetTaskId(null);
+      }, 3000);
 
-    in_progress: {
-      label: "In Progress",
-      icon: CircleDot,
-      badge: "bg-blue-50 text-blue-600",
-      iconBg: "bg-blue-50",
-      iconColor: "text-blue-600",
-    },
+      return () => clearTimeout(removeHighlightTimer);
+    }, 300);
 
-    for_review: {
-      label: "For Review",
-      icon: Eye,
-      badge: "bg-amber-50 text-amber-600",
-      iconBg: "bg-amber-50",
-      iconColor: "text-amber-600",
-    },
+    return () => clearTimeout(timer);
+  }, [tasks, targetTaskId]);
 
-    completed: {
-      label: "Completed",
-      icon: CircleCheck,
-      badge: "bg-emerald-50 text-emerald-600",
-      iconBg: "bg-emerald-50",
-      iconColor: "text-emerald-600",
-    },
-  };
+  /*
+  |--------------------------------------------------------------------------
+  | Selected Project
+  |--------------------------------------------------------------------------
+  */
+  const selectedProject = useMemo(() => {
+    return projects.find(
+      (project) =>
+        String(project.id) === String(selectedProjectId)
+    );
+  }, [projects, selectedProjectId]);
 
-  // --------------------------------------------------
-  // PRIORITY
-  // --------------------------------------------------
-  const priorityStyles = {
-    low: "bg-slate-100 text-slate-600",
-    medium: "bg-blue-50 text-blue-600",
-    high: "bg-red-50 text-red-600",
-  };
-
-  const priorityLabels = {
-    low: "Low",
-    medium: "Medium",
-    high: "High",
-  };
-
-  // --------------------------------------------------
-  // SELECTED PROJECT
-  // --------------------------------------------------
-  const selectedProject = projects.find(
-    (project) => String(project.id) === String(selectedProjectId)
-  );
-
-  // --------------------------------------------------
-  // STATS
-  // --------------------------------------------------
-  const stats = useMemo(() => {
-    return {
-      total: tasks.length,
-
-      pending: tasks.filter(
-        (task) => task.status === "pending"
-      ).length,
-
-      active: tasks.filter(
-        (task) =>
-          task.status === "in_progress" ||
-          task.status === "for_review"
-      ).length,
-
-      completed: tasks.filter(
-        (task) => task.status === "completed"
-      ).length,
-    };
-  }, [tasks]);
-
-  // --------------------------------------------------
-  // FILTER TASKS
-  // --------------------------------------------------
+  /*
+  |--------------------------------------------------------------------------
+  | Filter Tasks
+  |--------------------------------------------------------------------------
+  */
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
       const searchText = search.toLowerCase();
 
       const matchesSearch =
-        task.task_name?.toLowerCase().includes(searchText) ||
-        task.description?.toLowerCase().includes(searchText) ||
-        task.employee?.name?.toLowerCase().includes(searchText);
+        task.task_name
+          ?.toLowerCase()
+          .includes(searchText) ||
+        task.description
+          ?.toLowerCase()
+          .includes(searchText) ||
+        task.employee?.name
+          ?.toLowerCase()
+          .includes(searchText);
 
       const matchesStatus =
         statusFilter === "all" ||
@@ -278,784 +258,1159 @@ function TasksPage() {
     });
   }, [tasks, search, statusFilter]);
 
-  // --------------------------------------------------
-  // DATE FORMAT
-  // --------------------------------------------------
-  const formatDate = (date) => {
-    if (!date) return "No deadline";
+  /*
+  |--------------------------------------------------------------------------
+  | Create Task
+  |--------------------------------------------------------------------------
+  */
+  const handleCreateTask = async (e) => {
+    e.preventDefault();
 
-    const parsed = new Date(date);
+    if (!selectedProjectId) {
+      return;
+    }
 
-    if (Number.isNaN(parsed.getTime())) return date;
+    try {
+      setError("");
 
-    return parsed.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
+      await taskService.create(selectedProjectId, {
+        task_name: formData.task_name,
+        description: formData.description,
+        assigned_to: Number(formData.assigned_to),
+        priority: formData.priority,
+        deadline: formData.deadline || null,
+        milestone_id: formData.milestone_id
+          ? Number(formData.milestone_id)
+          : null,
+      });
+
+      // Reload tasks
+      const response = await taskService.getByProject(
+        selectedProjectId
+      );
+
+      setTasks(response.data || []);
+
+      // Reset form
+      setFormData({
+        task_name: "",
+        description: "",
+        assigned_to: "",
+        priority: "medium",
+        deadline: "",
+        milestone_id: "",
+      });
+
+      setShowCreateModal(false);
+    } catch (err) {
+      console.error("Failed to create task:", err);
+
+      const message =
+        err.response?.data?.message ||
+        "Failed to create task.";
+
+      setError(message);
+    }
   };
 
-  // --------------------------------------------------
-  // LOADING
-  // --------------------------------------------------
+  /*
+  |--------------------------------------------------------------------------
+  | Review Task
+  |--------------------------------------------------------------------------
+  */
+  const handleReview = async (task) => {
+    if (!selectedProjectId) {
+      return;
+    }
+
+    try {
+      setError("");
+
+      const response = await taskService.getOne(
+        selectedProjectId,
+        task.id
+      );
+
+      setReviewTask(response.data);
+      setShowReviewModal(true);
+    } catch (err) {
+      console.error("Failed to load task details:", err);
+
+      setError(
+        err.response?.data?.message ||
+          "Failed to load task details."
+      );
+    }
+  };
+
+  /*
+  |--------------------------------------------------------------------------
+  | Approve Task
+  |--------------------------------------------------------------------------
+  */
+  const handleApprove = async (task) => {
+    if (!selectedProjectId || !task) {
+      return;
+    }
+
+    try {
+      setError("");
+
+      await taskService.approve(
+        selectedProjectId,
+        task.id
+      );
+
+      setTasks((prev) =>
+        prev.map((item) =>
+          item.id === task.id
+            ? {
+                ...item,
+                status: "completed",
+              }
+            : item
+        )
+      );
+
+      // Update the review modal task as well
+      setReviewTask((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: "completed",
+            }
+          : null
+      );
+
+      setShowReviewModal(false);
+      setReviewTask(null);
+    } catch (err) {
+      console.error("Failed to approve task:", err);
+
+      setError(
+        err.response?.data?.message ||
+          "Failed to approve task."
+      );
+    }
+  };
+
+  /*
+  |--------------------------------------------------------------------------
+  | Open Reject Modal
+  |--------------------------------------------------------------------------
+  */
+  const handleOpenReject = (task) => {
+    setSelectedTask(task);
+    setManagerComment("");
+
+    // Close review modal before opening reject modal
+    setShowReviewModal(false);
+
+    setShowRejectModal(true);
+  };
+
+  /*
+  |--------------------------------------------------------------------------
+  | Reject Task
+  |--------------------------------------------------------------------------
+  */
+  const handleReject = async (e) => {
+    e.preventDefault();
+
+    if (!selectedTask || !selectedProjectId) {
+      return;
+    }
+
+    if (!managerComment.trim()) {
+      return;
+    }
+
+    try {
+      setError("");
+
+      await taskService.reject(
+        selectedProjectId,
+        selectedTask.id,
+        managerComment
+      );
+
+      setTasks((prev) =>
+        prev.map((item) =>
+          item.id === selectedTask.id
+            ? {
+                ...item,
+                status: "in_progress",
+                manager_comment: managerComment,
+              }
+            : item
+        )
+      );
+
+      setShowRejectModal(false);
+      setSelectedTask(null);
+      setManagerComment("");
+      setReviewTask(null);
+    } catch (err) {
+      console.error("Failed to reject task:", err);
+
+      setError(
+        err.response?.data?.message ||
+          "Failed to reject task."
+      );
+    }
+  };
+
+  /*
+  |--------------------------------------------------------------------------
+  | Delete Task
+  |--------------------------------------------------------------------------
+  */
+  const handleDelete = async (task) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${task.task_name}"?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setError("");
+
+      await taskService.delete(
+        selectedProjectId,
+        task.id
+      );
+
+      setTasks((prev) =>
+        prev.filter((item) => item.id !== task.id)
+      );
+    } catch (err) {
+      console.error("Failed to delete task:", err);
+
+      setError(
+        err.response?.data?.message ||
+          "Failed to delete task."
+      );
+    }
+  };
+
+  /*
+  |--------------------------------------------------------------------------
+  | Status Badge
+  |--------------------------------------------------------------------------
+  */
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case "completed":
+        return (
+          <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700">
+            Completed
+          </span>
+        );
+
+      case "for_review":
+        return (
+          <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-700">
+            For Review
+          </span>
+        );
+
+      case "in_progress":
+        return (
+          <span className="rounded-full bg-yellow-100 px-2.5 py-1 text-xs font-medium text-yellow-700">
+            In Progress
+          </span>
+        );
+
+      case "pending":
+      default:
+        return (
+          <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
+            Pending
+          </span>
+        );
+    }
+  };
+
+  /*
+  |--------------------------------------------------------------------------
+  | Priority Badge
+  |--------------------------------------------------------------------------
+  */
+  const getPriorityBadge = (priority) => {
+    switch (priority) {
+      case "high":
+        return (
+          <span className="text-xs font-medium text-red-600">
+            High
+          </span>
+        );
+
+      case "medium":
+        return (
+          <span className="text-xs font-medium text-yellow-600">
+            Medium
+          </span>
+        );
+
+      case "low":
+        return (
+          <span className="text-xs font-medium text-green-600">
+            Low
+          </span>
+        );
+
+      default:
+        return (
+          <span className="text-xs font-medium text-gray-500">
+            Medium
+          </span>
+        );
+    }
+  };
+
+  /*
+  |--------------------------------------------------------------------------
+  | Loading
+  |--------------------------------------------------------------------------
+  */
   if (loading) {
-    return <TasksPageSkeleton />;
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <p className="text-sm text-gray-500">
+          Loading projects...
+        </p>
+      </div>
+    );
   }
 
   return (
-    <>
-      <div className="space-y-6">
+    <div className="space-y-6">
 
-        {/* ==========================================
-            PAGE HEADER
-        ========================================== */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                <ClipboardList size={20} />
-              </div>
+      {/* ================================================================
+          HEADER
+      ================================================================= */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">
+            Tasks
+          </h1>
 
-              <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
-                Tasks
-              </h2>
-            </div>
-
-            <p className="mt-2 text-sm text-slate-500">
-              {isManager
-                ? "Manage and track tasks across your projects."
-                : "View task progress across all projects."}
-            </p>
-          </div>
-
-          {isManager && selectedProjectId && (
-            <button
-              onClick={() => setShowModal(true)}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800"
-            >
-              <Plus size={17} />
-              New Task
-            </button>
-          )}
+          <p className="mt-1 text-sm text-gray-500">
+            Manage and monitor project tasks.
+          </p>
         </div>
 
-        {/* ==========================================
-            PROJECT SELECTOR
-        ========================================== */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-              <FolderKanban size={19} />
-            </div>
-
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                Project
-              </p>
-
-              <p className="mt-0.5 text-sm font-medium text-slate-700">
-                Select a project to view tasks
-              </p>
-            </div>
-          </div>
-
-          <select
-            value={selectedProjectId}
-            onChange={(e) => {
-              setSelectedProjectId(e.target.value);
-              setStatusFilter("all");
-              setSearch("");
-            }}
-            className="mt-4 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
+        {canManage && selectedProjectId && (
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center justify-center gap-2 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-900"
           >
-            <option value="">-- Pumili ng project --</option>
-
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.project_name}
-              </option>
-            ))}
-          </select>
-
-          {selectedProject && (
-            <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              Active project
-            </div>
-          )}
-        </div>
-
-        {/* ==========================================
-            ERROR
-        ========================================== */}
-        {error && (
-          <div className="rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        {/* ==========================================
-            PROJECT CONTENT
-        ========================================== */}
-        {selectedProjectId && (
-          <>
-            {/* ======================================
-                KPI CARDS
-            ====================================== */}
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-
-              {/* TOTAL */}
-              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Total
-                  </p>
-
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-                    <ListTodo size={18} />
-                  </div>
-                </div>
-
-                <p className="mt-3 text-2xl font-semibold text-slate-900">
-                  {stats.total}
-                </p>
-
-                <p className="mt-1 text-xs text-slate-400">
-                  Total tasks
-                </p>
-              </div>
-
-              {/* PENDING */}
-              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Pending
-                  </p>
-
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
-                    <Clock3 size={18} />
-                  </div>
-                </div>
-
-                <p className="mt-3 text-2xl font-semibold text-slate-900">
-                  {stats.pending}
-                </p>
-
-                <p className="mt-1 text-xs text-slate-400">
-                  Waiting to start
-                </p>
-              </div>
-
-              {/* ACTIVE */}
-              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Active
-                  </p>
-
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                    <Activity size={18} />
-                  </div>
-                </div>
-
-                <p className="mt-3 text-2xl font-semibold text-slate-900">
-                  {stats.active}
-                </p>
-
-                <p className="mt-1 text-xs text-slate-400">
-                  In progress or review
-                </p>
-              </div>
-
-              {/* COMPLETED */}
-              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Completed
-                  </p>
-
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-                    <CircleCheck size={18} />
-                  </div>
-                </div>
-
-                <p className="mt-3 text-2xl font-semibold text-slate-900">
-                  {stats.completed}
-                </p>
-
-                <p className="mt-1 text-xs text-slate-400">
-                  Finished tasks
-                </p>
-              </div>
-            </div>
-
-            {/* ======================================
-                TASKS SECTION
-            ====================================== */}
-            <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-
-              {/* HEADER */}
-              <div className="border-b border-slate-100 p-5">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-
-                  <div>
-                    <h3 className="text-base font-semibold text-slate-900">
-                      Project Tasks
-                    </h3>
-
-                    <p className="mt-1 text-xs text-slate-400">
-                      {filteredTasks.length} of {tasks.length} tasks
-                    </p>
-                  </div>
-
-                  {/* SEARCH */}
-                  <div className="relative w-full lg:w-72">
-                    <Search
-                      size={16}
-                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                    />
-
-                    <input
-                      type="text"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Search tasks..."
-                      className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm outline-none transition focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
-                    />
-                  </div>
-                </div>
-
-                {/* FILTERS */}
-                <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
-                  {[
-                    { key: "all", label: "All" },
-                    { key: "pending", label: "Pending" },
-                    { key: "in_progress", label: "In Progress" },
-                    { key: "for_review", label: "Review" },
-                    { key: "completed", label: "Completed" },
-                  ].map((filter) => (
-                    <button
-                      key={filter.key}
-                      onClick={() =>
-                        setStatusFilter(filter.key)
-                      }
-                      className={`whitespace-nowrap rounded-lg px-3.5 py-2 text-xs font-medium transition ${
-                        statusFilter === filter.key
-                          ? "bg-slate-900 text-white shadow-sm"
-                          : "bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-                      }`}
-                    >
-                      {filter.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* ====================================
-                  TASK GRID
-              ==================================== */}
-              <div className="p-5">
-
-                {tasksLoading ? (
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {[1, 2, 3, 4, 5, 6].map((item) => (
-                      <div
-                        key={item}
-                        className="animate-pulse rounded-xl border border-slate-200 p-5"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="h-10 w-10 rounded-lg bg-slate-200" />
-                          <div className="h-6 w-24 rounded-full bg-slate-200" />
-                        </div>
-
-                        <div className="mt-5 h-5 w-40 rounded bg-slate-200" />
-
-                        <div className="mt-2 h-4 w-full rounded bg-slate-200" />
-                        <div className="mt-2 h-4 w-3/4 rounded bg-slate-200" />
-
-                        <div className="mt-5 space-y-3">
-                          <div className="h-4 w-32 rounded bg-slate-200" />
-                          <div className="h-4 w-28 rounded bg-slate-200" />
-                          <div className="h-4 w-24 rounded bg-slate-200" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : filteredTasks.length === 0 ? (
-
-                  /* EMPTY */
-                  <div className="flex min-h-[260px] flex-col items-center justify-center text-center">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400">
-                      <ClipboardList size={24} />
-                    </div>
-
-                    <h4 className="mt-4 text-sm font-semibold text-slate-700">
-                      No tasks found
-                    </h4>
-
-                    <p className="mt-1 max-w-sm text-xs text-slate-400">
-                      {search || statusFilter !== "all"
-                        ? "Try changing your search or status filter."
-                        : "Wala pang tasks sa project na ito."}
-                    </p>
-
-                    {isManager &&
-                      !search &&
-                      statusFilter === "all" && (
-                        <button
-                          onClick={() => setShowModal(true)}
-                          className="mt-4 inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-xs font-medium text-white transition hover:bg-slate-800"
-                        >
-                          <Plus size={14} />
-                          Create First Task
-                        </button>
-                      )}
-                  </div>
-
-                ) : (
-
-                  /* TASK CARDS */
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {filteredTasks.map((task) => {
-                      const config =
-                        statusConfig[task.status] ||
-                        statusConfig.pending;
-
-                      const StatusIcon = config.icon;
-
-                      return (
-                        <div
-                          key={task.id}
-                          className="flex min-h-[250px] flex-col rounded-xl border border-slate-200 bg-white p-5 transition hover:border-slate-300 hover:shadow-sm"
-                        >
-
-                          {/* TOP */}
-                          <div className="flex items-start justify-between gap-3">
-                            <div
-                              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${config.iconBg} ${config.iconColor}`}
-                            >
-                              <StatusIcon size={19} />
-                            </div>
-
-                            <span
-                              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${config.badge}`}
-                            >
-                              <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                              {config.label}
-                            </span>
-                          </div>
-
-                          {/* TITLE */}
-                          <div className="mt-5">
-                            <h4 className="line-clamp-1 font-semibold text-slate-800">
-                              {task.task_name}
-                            </h4>
-
-                            {task.description && (
-                              <p className="mt-1.5 line-clamp-2 text-sm leading-5 text-slate-500">
-                                {task.description}
-                              </p>
-                            )}
-                          </div>
-
-                          {/* META */}
-                          <div className="mt-5 space-y-3">
-
-                            {/* ASSIGNEE */}
-                            <div className="flex items-center gap-2 text-xs text-slate-500">
-                              <UserRound
-                                size={15}
-                                className="shrink-0 text-slate-400"
-                              />
-
-                              <span className="truncate">
-                                {task.employee?.name ||
-                                  "Walang naka-assign"}
-                              </span>
-                            </div>
-
-                            {/* DEADLINE */}
-                            {task.deadline && (
-                              <div className="flex items-center gap-2 text-xs text-slate-500">
-                                <CalendarDays
-                                  size={15}
-                                  className="shrink-0 text-slate-400"
-                                />
-
-                                <span>
-                                  {formatDate(task.deadline)}
-                                </span>
-                              </div>
-                            )}
-
-                            {/* PRIORITY */}
-                            {task.priority && (
-                              <div className="flex items-center gap-2">
-                                <Flag
-                                  size={15}
-                                  className="shrink-0 text-slate-400"
-                                />
-
-                                <span
-                                  className={`rounded-md px-2 py-1 text-xs font-medium ${
-                                    priorityStyles[
-                                      task.priority
-                                    ] ||
-                                    "bg-slate-100 text-slate-600"
-                                  }`}
-                                >
-                                  {priorityLabels[
-                                    task.priority
-                                  ] || task.priority}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* MANAGER COMMENT */}
-                          {task.manager_comment && (
-                            <div className="mt-4 rounded-lg border border-red-100 bg-red-50 px-3 py-2.5">
-                              <div className="flex items-center gap-1.5">
-                                <MessageSquare
-                                  size={13}
-                                  className="text-red-500"
-                                />
-
-                                <p className="text-xs font-medium text-red-700">
-                                  Manager feedback
-                                </p>
-                              </div>
-
-                              <p className="mt-1 text-xs leading-5 text-red-600">
-                                {task.manager_comment}
-                              </p>
-                            </div>
-                          )}
-
-                          {/* ACTIONS */}
-                          {isManager &&
-                            task.status === "for_review" && (
-                              <div className="mt-auto flex justify-end gap-2 border-t border-slate-100 pt-4">
-                                <button
-                                  onClick={() =>
-                                    openRejectModal(task)
-                                  }
-                                  className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-600 transition hover:bg-red-50"
-                                >
-                                  <XCircle size={14} />
-                                  Reject
-                                </button>
-
-                                <button
-                                  onClick={() =>
-                                    handleApprove(task.id)
-                                  }
-                                  className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-emerald-700"
-                                >
-                                  <Check size={14} />
-                                  Approve
-                                </button>
-                              </div>
-                            )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* ==========================================
-            NO PROJECT SELECTED
-        ========================================== */}
-        {!selectedProjectId && (
-          <div className="rounded-xl border border-dashed border-slate-200 bg-white px-6 py-16 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-slate-400">
-              <FolderKanban size={28} />
-            </div>
-
-            <h3 className="mt-4 text-sm font-semibold text-slate-700">
-              Select a project
-            </h3>
-
-            <p className="mx-auto mt-1 max-w-sm text-sm text-slate-400">
-              Choose a project above to view its tasks,
-              progress, and status.
-            </p>
-          </div>
+            <Plus size={16} />
+            Create Task
+          </button>
         )}
       </div>
 
-      {/* ==========================================
-          CREATE TASK MODAL
-      ========================================== */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+      {/* ================================================================
+          ERROR
+      ================================================================= */}
+      {error && (
+        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <AlertCircle size={18} />
+          {error}
+        </div>
+      )}
 
-            {/* MODAL HEADER */}
-            <div className="flex items-start justify-between">
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                  <ClipboardList size={19} />
-                </div>
+      {/* ================================================================
+          PROJECT SELECTOR
+      ================================================================= */}
+      <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <label className="mb-2 block text-sm font-medium text-gray-700">
+          Project
+        </label>
 
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900">
-                    New Task
+        <select
+          value={selectedProjectId}
+          onChange={(e) => {
+            setSelectedProjectId(e.target.value);
+            setTargetTaskId(null);
+            setShowCreateModal(false);
+            setShowReviewModal(false);
+            setShowRejectModal(false);
+            setTasks([]);
+          }}
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200 md:w-96"
+        >
+          <option value="">
+            Select a project
+          </option>
+
+          {projects.map((project) => (
+            <option
+              key={project.id}
+              value={project.id}
+            >
+              {project.project_name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* ================================================================
+          PROJECT INFORMATION
+      ================================================================= */}
+      {selectedProject && (
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-800">
+                {selectedProject.project_name}
+              </h2>
+
+              <p className="mt-1 text-sm text-gray-500">
+                {selectedProject.client_name ||
+                  "No client specified"}
+              </p>
+            </div>
+
+            <div className="text-sm text-gray-500">
+              {teamMembers.length} team member
+              {teamMembers.length !== 1 ? "s" : ""}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================================================================
+          FILTERS
+      ================================================================= */}
+      {selectedProjectId && (
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="relative w-full md:w-80">
+            <Search
+              size={17}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            />
+
+            <input
+              type="text"
+              value={search}
+              onChange={(e) =>
+                setSearch(e.target.value)
+              }
+              placeholder="Search tasks..."
+              className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+            />
+          </div>
+
+          <select
+            value={statusFilter}
+            onChange={(e) =>
+              setStatusFilter(e.target.value)
+            }
+            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400"
+          >
+            <option value="all">
+              All Status
+            </option>
+
+            <option value="pending">
+              Pending
+            </option>
+
+            <option value="in_progress">
+              In Progress
+            </option>
+
+            <option value="for_review">
+              For Review
+            </option>
+
+            <option value="completed">
+              Completed
+            </option>
+          </select>
+        </div>
+      )}
+
+      {/* ================================================================
+          TASKS
+      ================================================================= */}
+      {!selectedProjectId ? (
+        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-10 text-center">
+          <ClipboardList
+            size={40}
+            className="mx-auto text-gray-300"
+          />
+
+          <p className="mt-3 text-sm text-gray-500">
+            Select a project to view its tasks.
+          </p>
+        </div>
+      ) : tasksLoading ? (
+        <div className="rounded-xl border border-gray-200 bg-white p-10 text-center">
+          <p className="text-sm text-gray-500">
+            Loading tasks...
+          </p>
+        </div>
+      ) : filteredTasks.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-10 text-center">
+          <ClipboardList
+            size={40}
+            className="mx-auto text-gray-300"
+          />
+
+          <p className="mt-3 text-sm font-medium text-gray-600">
+            No tasks found.
+          </p>
+
+          <p className="mt-1 text-xs text-gray-400">
+            Try changing your search or status filter.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {filteredTasks.map((task) => (
+            <div
+              key={task.id}
+              id={`task-${task.id}`}
+              className="flex min-h-[250px] flex-col rounded-xl border border-slate-200 bg-white p-5 transition hover:border-slate-300 hover:shadow-sm"
+            >
+
+              {/* ========================================================
+                  TASK HEADER
+              ========================================================= */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="truncate text-base font-semibold text-slate-800">
+                    {task.task_name}
                   </h3>
 
-                  <p className="mt-1 text-xs text-slate-400">
-                    Create and assign a task to your team.
-                  </p>
+                  <div className="mt-2 flex items-center gap-2">
+                    {getStatusBadge(task.status)}
+                    {getPriorityBadge(task.priority)}
+                  </div>
+                </div>
+
+                {canManage && (
+                  <button
+                    onClick={() =>
+                      handleDelete(task)
+                    }
+                    className="rounded-md p-1 text-gray-400 transition hover:bg-red-50 hover:text-red-600"
+                    title="Delete task"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+
+              {/* ========================================================
+                  DESCRIPTION
+              ========================================================= */}
+              <p className="mt-4 line-clamp-3 text-sm text-gray-500">
+                {task.description ||
+                  "No task description provided."}
+              </p>
+
+              {/* ========================================================
+                  TASK INFORMATION
+              ========================================================= */}
+              <div className="mt-5 space-y-2">
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <User size={14} />
+
+                  <span>
+                    {task.employee?.name ||
+                      "Unassigned"}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <CalendarDays size={14} />
+
+                  <span>
+                    {task.deadline
+                      ? new Date(
+                          task.deadline
+                        ).toLocaleDateString()
+                      : "No deadline"}
+                  </span>
                 </div>
               </div>
 
+              {/* ========================================================
+                  PROGRESS
+              ========================================================= */}
+              <div className="mt-5">
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="text-xs font-medium text-gray-500">
+                    Progress
+                  </span>
+
+                  <span className="text-xs font-semibold text-slate-700">
+                    {task.progress_percent || 0}%
+                  </span>
+                </div>
+
+                <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+                  <div
+                    className="h-full rounded-full bg-slate-700 transition-all"
+                    style={{
+                      width: `${task.progress_percent || 0}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* ========================================================
+                  EMPLOYEE COMMENT
+              ========================================================= */}
+              {task.employee_comment && (
+                <div className="mt-4 rounded-lg bg-blue-50 p-3">
+                  <p className="text-xs font-semibold text-blue-700">
+                    Employee Comment
+                  </p>
+
+                  <p className="mt-1 text-xs text-blue-600">
+                    {task.employee_comment}
+                  </p>
+                </div>
+              )}
+
+              {/* ========================================================
+                  MANAGER COMMENT
+              ========================================================= */}
+              {task.manager_comment && (
+                <div className="mt-4 rounded-lg bg-red-50 p-3">
+                  <p className="text-xs font-semibold text-red-700">
+                    Manager Feedback
+                  </p>
+
+                  <p className="mt-1 text-xs text-red-600">
+                    {task.manager_comment}
+                  </p>
+                </div>
+              )}
+
+              {/* ========================================================
+                  ACTIONS
+              ========================================================= */}
+              <div className="mt-auto pt-5">
+
+                {task.status === "for_review" &&
+                  canManage && (
+                    <button
+                      onClick={() =>
+                        handleReview(task)
+                      }
+                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-800 px-3 py-2 text-xs font-medium text-white transition hover:bg-slate-900"
+                    >
+                      <ClipboardList size={15} />
+                      Review Task
+                    </button>
+                  )}
+
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {selectedProjectId && !canManage && <p className="text-sm text-slate-500">Read-only: only the project manager or an admin can manage tasks.</p>}
+
+      {/* ================================================================
+          CREATE TASK MODAL
+      ================================================================= */}
+      {showCreateModal && canManage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
+
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-800">
+                  Create Task
+                </h2>
+
+                <p className="mt-1 text-xs text-gray-500">
+                  Add a new task to this project.
+                </p>
+              </div>
+
               <button
-                type="button"
-                onClick={() => setShowModal(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                onClick={() =>
+                  setShowCreateModal(false)
+                }
+                className="text-gray-400 hover:text-gray-600"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
 
-            {/* ERROR */}
-            {modalError && (
-              <p className="mt-4 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">
-                {modalError}
-              </p>
-            )}
-
             <form
               onSubmit={handleCreateTask}
-              className="mt-5 space-y-4"
+              className="space-y-4"
             >
 
-              {/* TASK NAME */}
+              {/* Task Name */}
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-600">
+                <label className="mb-1 block text-sm font-medium text-gray-700">
                   Task Name
                 </label>
 
                 <input
-                  value={newTask.task_name}
+                  type="text"
+                  value={formData.task_name}
                   onChange={(e) =>
-                    setNewTask({
-                      ...newTask,
+                    setFormData({
+                      ...formData,
                       task_name: e.target.value,
                     })
                   }
                   required
-                  placeholder="e.g. Fix login authentication"
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
+                  placeholder="Enter task name"
                 />
               </div>
 
-              {/* DESCRIPTION */}
+              {/* Description */}
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-600">
+                <label className="mb-1 block text-sm font-medium text-gray-700">
                   Description
                 </label>
 
                 <textarea
-                  value={newTask.description}
+                  value={formData.description}
                   onChange={(e) =>
-                    setNewTask({
-                      ...newTask,
+                    setFormData({
+                      ...formData,
                       description: e.target.value,
                     })
                   }
                   rows={3}
-                  placeholder="Describe what needs to be done..."
-                  className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
+                  placeholder="Enter task description"
                 />
               </div>
 
-              {/* ASSIGN TO */}
+              {/* Assign Employee */}
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-600">
+                <label className="mb-1 block text-sm font-medium text-gray-700">
                   Assign To
                 </label>
 
                 <select
-                  value={newTask.assigned_to}
+                  value={formData.assigned_to}
                   onChange={(e) =>
-                    setNewTask({
-                      ...newTask,
+                    setFormData({
+                      ...formData,
                       assigned_to: e.target.value,
                     })
                   }
                   required
-                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
                 >
-                  <option value="">-- Pumili --</option>
+                  <option value="">
+                    Select employee
+                  </option>
 
                   {teamMembers.map((member) => (
-                    <option key={member.id} value={member.id}>
+                    <option
+                      key={member.id}
+                      value={member.id}
+                    >
                       {member.name}
                     </option>
                   ))}
                 </select>
               </div>
 
-              {/* PRIORITY + DEADLINE */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Priority */}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Priority
+                </label>
 
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-slate-600">
-                    Priority
-                  </label>
+                <select
+                  value={formData.priority}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      priority: e.target.value,
+                    })
+                  }
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
+                >
+                  <option value="low">
+                    Low
+                  </option>
 
-                  <select
-                    value={newTask.priority}
-                    onChange={(e) =>
-                      setNewTask({
-                        ...newTask,
-                        priority: e.target.value,
-                      })
-                    }
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                  >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                  </select>
+                  <option value="medium">
+                    Medium
+                  </option>
+
+                  <option value="high">
+                    High
+                  </option>
+                </select>
+              </div>
+
+              {/* Deadline */}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Deadline
+                </label>
+
+                <input
+                  type="date"
+                  value={formData.deadline}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      deadline: e.target.value,
+                    })
+                  }
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
+                />
+              </div>
+
+              {/* Buttons */}
+              <div className="flex justify-end gap-2 pt-3">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowCreateModal(false)
+                  }
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900"
+                >
+                  Create Task
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================================================================
+          REVIEW TASK MODAL
+      ================================================================= */}
+      {showReviewModal && reviewTask && canManage && String(reviewTask.project_id) === String(selectedProjectId) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white shadow-xl">
+
+            {/* Review Header */}
+            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-5">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-800">
+                  Review Task
+                </h2>
+
+                <p className="mt-1 text-xs text-gray-500">
+                  Review the submitted work before making a decision.
+                </p>
+              </div>
+
+              <button
+                onClick={() => {
+                  setShowReviewModal(false);
+                  setReviewTask(null);
+                }}
+                className="text-gray-400 transition hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Review Content */}
+            <div className="space-y-5 p-6">
+
+              {/* Task Name */}
+              <div>
+                <p className="text-xs font-medium uppercase text-gray-400">
+                  Task
+                </p>
+
+                <h3 className="mt-1 text-xl font-semibold text-slate-800">
+                  {reviewTask.task_name}
+                </h3>
+              </div>
+
+              {/* Status */}
+              <div>
+                <p className="mb-2 text-xs font-medium uppercase text-gray-400">
+                  Status
+                </p>
+
+                {getStatusBadge(reviewTask.status)}
+              </div>
+
+              {/* Description */}
+              <div className="rounded-lg border border-gray-200 p-4">
+                <p className="text-xs font-semibold uppercase text-gray-400">
+                  Description
+                </p>
+
+                <p className="mt-2 text-sm leading-6 text-gray-600">
+                  {reviewTask.description ||
+                    "No description provided."}
+                </p>
+              </div>
+
+              {/* Employee + Deadline */}
+              <div className="grid gap-4 md:grid-cols-2">
+
+                <div className="rounded-lg border border-gray-200 p-4">
+                  <p className="text-xs font-semibold uppercase text-gray-400">
+                    Assigned Employee
+                  </p>
+
+                  <p className="mt-2 text-sm font-medium text-slate-800">
+                    {reviewTask.employee?.name ||
+                      "Unknown employee"}
+                  </p>
                 </div>
 
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-slate-600">
+                <div className="rounded-lg border border-gray-200 p-4">
+                  <p className="text-xs font-semibold uppercase text-gray-400">
                     Deadline
-                  </label>
+                  </p>
 
-                  <input
-                    type="date"
-                    value={newTask.deadline}
-                    onChange={(e) =>
-                      setNewTask({
-                        ...newTask,
-                        deadline: e.target.value,
-                      })
-                    }
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                  <p className="mt-2 text-sm font-medium text-slate-800">
+                    {reviewTask.deadline
+                      ? new Date(
+                          reviewTask.deadline
+                        ).toLocaleDateString()
+                      : "No deadline"}
+                  </p>
+                </div>
+
+              </div>
+
+              {/* Progress */}
+              <div className="rounded-lg border border-gray-200 p-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase text-gray-400">
+                    Progress
+                  </p>
+
+                  <p className="text-sm font-semibold text-slate-800">
+                    {reviewTask.progress_percent || 0}%
+                  </p>
+                </div>
+
+                <div className="h-3 overflow-hidden rounded-full bg-gray-100">
+                  <div
+                    className="h-full rounded-full bg-slate-700 transition-all"
+                    style={{
+                      width: `${
+                        reviewTask.progress_percent || 0
+                      }%`,
+                    }}
                   />
                 </div>
               </div>
 
-              {/* BUTTONS */}
-              <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+              {/* Employee Comment */}
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                <p className="text-xs font-semibold uppercase text-blue-600">
+                  Employee Comment
+                </p>
+
+                <p className="mt-2 text-sm leading-6 text-blue-800">
+                  {reviewTask.employee_comment ||
+                    "No comment provided."}
+                </p>
+              </div>
+
+              {/* Submitted Documents */}
+              <div className="rounded-lg border border-gray-200 p-4">
+                <p className="text-xs font-semibold uppercase text-gray-400">
+                  Submitted Documents / Proof
+                </p>
+
+                {reviewTask.documents &&
+                reviewTask.documents.length > 0 ? (
+                  <div className="mt-3 space-y-2">
+                    {reviewTask.documents.map(
+                      (document) => (
+                        <div
+                          key={document.id}
+                          className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-3"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-slate-700">
+                              {document.file_path
+                                ?.split("/")
+                                .pop() ||
+                                "Document"}
+                            </p>
+
+                            <p className="mt-1 text-xs text-gray-400">
+                              {document.file_type ||
+                                "File"}
+                            </p>
+                          </div>
+
+                          <button
+                            onClick={() => documentService.download(document).catch((error) => window.alert(error.message))}
+                            className="ml-4 shrink-0 text-xs font-medium text-blue-600 hover:text-blue-700"
+                          >
+                            Download
+                          </button>
+                        </div>
+                      )
+                    )}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-gray-500">
+                    No documents submitted.
+                  </p>
+                )}
+              </div>
+
+              {/* Manager Feedback if exists */}
+              {reviewTask.manager_comment && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+                  <p className="text-xs font-semibold uppercase text-red-600">
+                    Manager Feedback
+                  </p>
+
+                  <p className="mt-2 text-sm leading-6 text-red-700">
+                    {reviewTask.manager_comment}
+                  </p>
+                </div>
+              )}
+
+            </div>
+
+            {/* Review Actions */}
+            {reviewTask.status === "for_review" && (
+              <div className="flex justify-end gap-2 border-t border-gray-200 px-6 py-4">
+
                 <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+                  onClick={() =>
+                    handleOpenReject(reviewTask)
+                  }
+                  className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-100"
                 >
-                  Cancel
+                  <X size={16} />
+                  Reject
                 </button>
 
                 <button
-                  type="submit"
-                  disabled={modalLoading}
-                  className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60"
+                  onClick={() =>
+                    handleApprove(reviewTask)
+                  }
+                  className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700"
                 >
-                  {modalLoading ? (
-                    "Saving..."
-                  ) : (
-                    <>
-                      <Plus size={16} />
-                      Create Task
-                    </>
-                  )}
+                  <Check size={16} />
+                  Approve
                 </button>
+
               </div>
-            </form>
+            )}
+
           </div>
         </div>
       )}
 
-      {/* ==========================================
+      {/* ================================================================
           REJECT MODAL
-      ========================================== */}
-      {rejectingTask && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+      ================================================================= */}
+      {showRejectModal && selectedTask && canManage && String(selectedTask.project_id) === String(selectedProjectId) && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
 
-            {/* HEADER */}
-            <div className="flex items-start justify-between">
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50 text-red-600">
-                  <XCircle size={19} />
-                </div>
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
 
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900">
-                    Reject Task
-                  </h3>
+            <div className="mb-5 flex items-start justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-800">
+                  Reject Task
+                </h2>
 
-                  <p className="mt-1 text-sm text-slate-500">
-                    {rejectingTask.task_name}
-                  </p>
-                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  Provide feedback so the employee can revise the task.
+                </p>
               </div>
 
               <button
-                type="button"
-                onClick={() => setRejectingTask(null)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                onClick={() => {
+                  setShowRejectModal(false);
+                  setSelectedTask(null);
+                  setManagerComment("");
+                }}
+                className="text-gray-400 hover:text-gray-600"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
 
-            {/* ERROR */}
-            {rejectError && (
-              <p className="mt-4 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">
-                {rejectError}
-              </p>
-            )}
-
             <form
               onSubmit={handleReject}
-              className="mt-5"
+              className="space-y-4"
             >
-              <label className="mb-1.5 block text-xs font-medium text-slate-600">
-                Reason / Feedback
-              </label>
 
-              <textarea
-                value={rejectComment}
-                onChange={(e) =>
-                  setRejectComment(e.target.value)
-                }
-                required
-                rows={4}
-                placeholder="Anong kailangan ayusin?"
-                className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-red-300 focus:ring-2 focus:ring-red-100"
-              />
+              <div>
+                <p className="mb-2 text-sm font-medium text-slate-700">
+                  {selectedTask.task_name}
+                </p>
 
-              <div className="mt-4 flex justify-end gap-2 border-t border-slate-100 pt-4">
+                <textarea
+                  value={managerComment}
+                  onChange={(e) =>
+                    setManagerComment(
+                      e.target.value
+                    )
+                  }
+                  required
+                  rows={5}
+                  placeholder="Enter your feedback..."
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2">
+
                 <button
                   type="button"
-                  onClick={() => setRejectingTask(null)}
-                  className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+                  onClick={() => {
+                    setShowRejectModal(false);
+                    setSelectedTask(null);
+                    setManagerComment("");
+
+                    // Reopen review modal
+                    setReviewTask(selectedTask);
+                    setShowReviewModal(true);
+                  }}
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                 >
                   Cancel
                 </button>
 
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-red-700"
+                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
                 >
-                  <XCircle size={16} />
                   Reject Task
                 </button>
+
               </div>
             </form>
           </div>
         </div>
       )}
-    </>
+
+    </div>
   );
 }
 

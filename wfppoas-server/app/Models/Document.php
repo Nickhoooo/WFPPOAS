@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Document extends Model
@@ -18,14 +18,18 @@ class Document extends Model
         'version',
     ];
 
-    public function task(){
+    public function task()
+    {
         return $this->belongsTo(Task::class);
     }
 
-    public function project(){
+    public function project()
+    {
         return $this->belongsTo(Project::class);
     }
-    public function uploader(){
+
+    public function uploader()
+    {
         return $this->belongsTo(User::class, 'uploaded_by');
     }
 }

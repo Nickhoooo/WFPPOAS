@@ -379,7 +379,7 @@ function Login() {
                       </label>
                       <button type="button" onClick={handleForgotPassword}
                         className="text-xs font-medium text-slate-500 transition-colors hover:text-slate-900">
-                        Nakalimutan?
+                        Forgot password
                       </button>
                     </div>
                     <div className="relative">
@@ -403,7 +403,7 @@ function Login() {
                     </div>
                     {capsLockOn && !showPassword && (
                       <p className="mt-1.5 flex items-center gap-1 text-xs text-amber-600">
-                        <AlertIcon className="h-3.5 w-3.5" /> Naka-on ang Caps Lock
+                        <AlertIcon className="h-3.5 w-3.5" /> Caps Lock is on
                       </p>
                     )}
                   </div>
@@ -414,7 +414,7 @@ function Login() {
                       className="h-4 w-4 cursor-pointer rounded border-slate-300 accent-slate-900" />
                     <label htmlFor="remember"
                       className="ml-2 cursor-pointer select-none text-sm text-slate-600">
-                      Tandaan ang email ko
+                      Remember me
                     </label>
                   </div>
 
@@ -556,7 +556,7 @@ function Login() {
             </div>
 
             <p className="mt-6 text-center text-xs text-slate-400">
-              © {new Date().getFullYear()} WFPPOAS · Para sa internal use lamang
+              © {new Date().getFullYear()} WFPPOAS · All rights reserved.
             </p>
           </div>
         </div>

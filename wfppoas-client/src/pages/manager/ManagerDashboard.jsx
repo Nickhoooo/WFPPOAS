@@ -215,12 +215,12 @@ function ManagerDashboard() {
               <TrendingUp size={18} className="text-blue-600" />
 
               <h3 className="text-sm font-semibold text-slate-800">
-                Task Performance
+                Team Task Performance
               </h3>
             </div>
 
             <p className="mt-1 text-xs text-slate-400">
-              Overall completion across assigned tasks
+              Overall completion across tasks assigned to your team
             </p>
           </div>
 

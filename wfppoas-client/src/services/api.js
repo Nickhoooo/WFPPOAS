@@ -84,6 +84,9 @@ export const projectService = {
   create: (projectData) =>
     apiClient.post("/projects", projectData),
 
+  getTeamEmployees: (projectId) =>
+  apiClient.get(`/projects/${projectId}/team/employees`),
+
   // Update a project
   update: (projectId, projectData) =>
     apiClient.put(`/projects/${projectId}`, projectData),
@@ -106,6 +109,8 @@ export const projectService = {
   
   getAvailableEmployees: (projectId) =>
   apiClient.get(`/projects/${projectId}/available-employees`),
+
+ 
 };
 
 // ─────────────────────────────────────────────────────
@@ -131,8 +136,10 @@ export const taskService = {
   delete: (projectId, taskId) =>
     apiClient.delete(`/projects/${projectId}/tasks/${taskId}`),
 
-  submitForReview: (projectId, taskId) =>
-    apiClient.post(`/projects/${projectId}/tasks/${taskId}/submit`),
+  submitForReview: (projectId, taskId, employeeComment) =>
+  apiClient.post(`/projects/${projectId}/tasks/${taskId}/submit`, {
+    employee_comment: employeeComment,
+  }),
 
   approve: (projectId, taskId) =>
     apiClient.post(`/projects/${projectId}/tasks/${taskId}/approve`),
@@ -164,8 +171,8 @@ export const milestoneService = {
 // ─────────────────────────────────────────────────────
 
 export const performanceService = {
-  getByEmployee: (userId) =>
-    apiClient.get(`/users/${userId}/performance`),
+  getByEmployee: (userId, projectId = null) =>
+    apiClient.get(`/users/${userId}/performance`, { params: { project_id: projectId } }),
 
   compute: (userId, period, projectId = null) =>
     apiClient.post(`/users/${userId}/performance/compute`, {
@@ -243,6 +250,30 @@ export const dashboardService = {
 // ─────────────────────────────────────────────────────
 
 export const documentService = {
+  download: async (document) => {
+    try {
+      const response = await apiClient.get(`/documents/${document.id}/download`, {
+        responseType: "blob",
+      });
+      const url = URL.createObjectURL(response.data);
+      const link = window.document.createElement("a");
+      link.href = url;
+      link.download = document.file_path.split("/").pop();
+      window.document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      let message = "Failed to download document.";
+      if (error.response?.data instanceof Blob) {
+        try {
+          message = JSON.parse(await error.response.data.text()).message || message;
+        } catch { /* Use the fallback for non-JSON errors. */ }
+      }
+      throw new Error(message);
+    }
+  },
+
   getByProject: (projectId) =>
     apiClient.get(`/projects/${projectId}/documents`),
 
@@ -256,6 +287,17 @@ export const documentService = {
 
   getAll: () =>
     apiClient.get("/documents"),
+};
+
+export const employeeService = {
+  getMyProjects: () => apiClient.get("/my-projects"),
+};
+
+export const notificationService = {
+  getAll: () => apiClient.get("/notifications"),
+
+  markAsRead: (notificationId) =>
+    apiClient.put(`/notifications/${notificationId}/read`),
 };
 
 export default apiClient;

@@ -10,16 +10,23 @@ class Task extends Model
     use HasFactory;
 
     protected $fillable = [
-        'project_id',
-        'milestone_id',
-        'assigned_to',
-        'task_name',
-        'description',
-        'priority',
-        'deadline',
-        'progress_percent',
-        'status',
-        'manager_comment',
+    'project_id',
+    'milestone_id',
+    'assigned_to',
+    'task_name',
+    'description',
+    'priority',
+    'deadline',
+    'completed_at',
+    'progress_percent',
+    'status',
+    'manager_comment',
+    'employee_comment',
+];
+
+ protected $casts = [
+        'deadline' => 'datetime',
+        'completed_at' => 'datetime',
     ];
 
     public function project()

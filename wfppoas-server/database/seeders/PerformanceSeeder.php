@@ -15,7 +15,7 @@ class PerformanceSeeder extends Seeder
     public function run(): void
     {
         // Check if performance records already exist
-        if (PerformanceRecord::where('period', 'like', '2026%')->exists()) {
+        if (PerformanceRecord::where('period', 'like', '2026-%')->exists()) {
             echo "Performance records already exist. Skipping PerformanceSeeder.\n";
             return;
         }
@@ -23,12 +23,24 @@ class PerformanceSeeder extends Seeder
         $employees = User::where('role', 'employee')->get();
         $managers = User::where('role', 'manager')->get();
         $projects = Project::all();
-        $periods = ['2026-Q1', '2026-Q2', '2026-Q3'];
+
+        $periods = [
+            '2026-01',
+            '2026-02',
+            '2026-03',
+            '2026-04',
+            '2026-05',
+            '2026-06',
+            '2026-07',
+            '2026-08',
+        ];
 
         foreach ($employees as $employee) {
-            // Each employee gets 2-3 performance records
             $numRecords = rand(2, 3);
-            $selectedProjects = $projects->random(min($numRecords, $projects->count()));
+
+            $selectedProjects = $projects->isNotEmpty()
+                ? $projects->random(min($numRecords, $projects->count()))
+                : collect();
 
             foreach ($selectedProjects as $project) {
                 $period = fake()->randomElement($periods);
