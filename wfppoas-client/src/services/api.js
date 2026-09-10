@@ -72,6 +72,7 @@ export const authService = {
 // ─────────────────────────────────────────────────────
 
 export const projectService = {
+  search: (q, signal) => apiClient.get("/project-search", { params: { q }, signal }),
   // Get all projects (for current user)
   getAll: () =>
     apiClient.get("/projects"),

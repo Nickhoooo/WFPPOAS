@@ -18,6 +18,8 @@ import {
   getCurrentUser,
 } from "../../services/api";
 import { canManageProject } from "../../utils/projectPermissions";
+import TasksPageSkeleton from '../../components/skeletons/TasksPageSkeleton';
+import TaskCardsSkeleton from '../../components/skeletons/TaskCardsSkeleton';
 
 function TasksPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -576,13 +578,7 @@ function TasksPage() {
   |--------------------------------------------------------------------------
   */
   if (loading) {
-    return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <p className="text-sm text-gray-500">
-          Loading projects...
-        </p>
-      </div>
-    );
+    return <TasksPageSkeleton />;
   }
 
   return (
@@ -750,11 +746,7 @@ function TasksPage() {
           </p>
         </div>
       ) : tasksLoading ? (
-        <div className="rounded-xl border border-gray-200 bg-white p-10 text-center">
-          <p className="text-sm text-gray-500">
-            Loading tasks...
-          </p>
-        </div>
+        <TaskCardsSkeleton />
       ) : filteredTasks.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-300 bg-white p-10 text-center">
           <ClipboardList

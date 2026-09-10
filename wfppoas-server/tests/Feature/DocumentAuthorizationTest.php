@@ -17,16 +17,7 @@ class DocumentAuthorizationTest extends TestCase
         parent::setUp();
         config(['database.default' => 'sqlite', 'database.connections.sqlite.database' => ':memory:']);
         app('db')->purge('sqlite');
-        foreach ([
-            '0001_01_01_000000_create_users_table.php',
-            '2026_08_21_092313_create_projects_table.php',
-            '2026_08_21_093551_create_milestones_table.php',
-            '2026_08_21_094949_create_tasks_table.php',
-            '2026_08_21_100743_create_documents_table.php',
-            '2026_08_31_025141_create_project_team_table.php',
-        ] as $migration) {
-            (require database_path('migrations/'.$migration))->up();
-        }
+        $this->artisan('migrate', ['--force' => true])->assertExitCode(0);
         Storage::fake('local');
         Storage::fake('public');
     }

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Notification;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
@@ -90,11 +92,15 @@ class AuthController extends Controller
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function (User $user, string $password) {
-                $user->forceFill([
-                    'password' => Hash::make($password),
-                ])->setRememberToken(Str::random(60));
+                DB::transaction(function () use ($user, $password) {
+                    $user->forceFill([
+                        'password' => Hash::make($password),
+                    ])->setRememberToken(Str::random(60));
 
-                $user->save();
+                    $user->save();
+                    $user->tokens()->delete();
+                    Notification::notifyAdmins($user, 'password_reset', "{$user->name} successfully reset their password.", ['subject_user_id' => $user->id]);
+                });
             }
         );
 
@@ -107,6 +113,23 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Your password has been reset successfully.',
         ]);
+    }
+
+    public function changePassword(Request $request)
+    {
+        $validated = $request->validate([
+            'current_password' => ['required', 'current_password:sanctum'],
+            'password' => ['required', 'string', 'min:8', 'confirmed', 'different:current_password'],
+        ]);
+        $user = $request->user();
+        DB::transaction(function () use ($user, $validated) {
+            $user->forceFill(['password' => Hash::make($validated['password'])])
+                ->setRememberToken(Str::random(60));
+            $user->save();
+            $user->tokens()->delete();
+            Notification::notifyAdmins($user, 'password_changed', "{$user->name} changed their password in Settings.", ['subject_user_id' => $user->id]);
+        });
+        return response()->json(['message' => 'Password changed. Please sign in again on all devices.']);
     }
 
     public function logout(Request $request)

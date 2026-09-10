@@ -3,9 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use Illuminate\Auth\Notifications\ResetPassword;
+use App\Notifications\CustomPasswordResetNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
@@ -30,10 +29,14 @@ class PasswordResetFlowTest extends TestCase
             ->assertJsonPath('message', 'Password reset link has been sent to your email address.');
 
         Notification::assertSentTo(
-            new AnonymousNotifiable(),
-            ResetPassword::class,
+            $user,
+            CustomPasswordResetNotification::class,
             function ($notification, $channels) use ($user) {
-                $this->assertSame($user->email, $notification->toMail($user)->to[0]['address']);
+                $this->assertContains('mail', $channels);
+                $this->assertTrue(app('auth.password.broker')->tokenExists($user, $notification->token));
+                parse_str(parse_url($notification->toMail($user)->actionUrl, PHP_URL_QUERY), $parameters);
+                $this->assertSame($user->email, $parameters['email']);
+                $this->assertSame($notification->token, $parameters['token']);
                 return true;
             }
         );

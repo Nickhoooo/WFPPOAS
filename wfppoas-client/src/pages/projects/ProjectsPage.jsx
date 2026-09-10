@@ -1,16 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { projectService, getUserRole } from "../../services/api"
 import ProjectsList from "./ProjectsList";
 import ProjectDetail from "./ProjectDetail";
 import ProjectModal from "./ProjectModal";
+import ProjectsPageSkeleton from "../../components/skeletons/ProjectsPageSkeleton";
+import { useSearchParams } from 'react-router-dom';
 
 
 
 function ProjectsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [projects, setProjects] = useState([]);
   const [filteredProjects, setFilteredProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [teamMembers, setTeamMembers] = useState([]);
+  const [teamLoading, setTeamLoading] = useState(false);
+  const [teamBusy, setTeamBusy] = useState(false);
+  const selectionRequest = useRef(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -21,6 +27,14 @@ function ProjectsPage() {
   const [modalError, setModalError] = useState("");
 
   const userRole = getUserRole();
+  useEffect(() => {
+    const targetId = searchParams.get('project');
+    if (!targetId || loading) return;
+    const target = projects.find(project => String(project.id) === targetId);
+    if (target) handleSelectProject(target);
+    else setError('This project is no longer available.');
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams, loading, projects]);
 
   // Fetch projects on mount
   useEffect(() => {
@@ -68,20 +82,27 @@ function ProjectsPage() {
   };
 
   const handleSelectProject = async (project) => {
+    const requestId = ++selectionRequest.current;
     try {
+      setTeamMembers([]);
+      setTeamLoading(true);
       setSelectedProject(project);
       setError("");
 
       // Fetch team members for this project
       const teamResponse = await projectService.getTeam(project.id);
-      setTeamMembers(teamResponse.data || []);
+      if (requestId === selectionRequest.current) setTeamMembers(teamResponse.data || []);
     } catch (err) {
       console.error(err);
-      setError("Hindi ma-load ang project details.");
+      if (requestId === selectionRequest.current) setError("Hindi ma-load ang project team. Open the project again to retry.");
+    } finally {
+      if (requestId === selectionRequest.current) setTeamLoading(false);
     }
   };
 
   const handleBackToList = () => {
+    ++selectionRequest.current;
+    setTeamLoading(false);
     setSelectedProject(null);
     setTeamMembers([]);
   };
@@ -117,10 +138,10 @@ function ProjectsPage() {
     try {
       setModalLoading(true);
       setModalError("");
-      await projectService.update(editingProject.id, formData);
+      const response = await projectService.update(editingProject.id, formData);
+      setSelectedProject(previous => ({...previous, ...response.data}));
       handleCloseModal();
       await fetchProjects();
-      setSelectedProject(null);
     } catch (err) {
       console.error(err);
       setModalError(err.response?.data?.message || "Hindi ma-update ang project.");
@@ -151,59 +172,68 @@ function ProjectsPage() {
   };
 
   const handleAddTeamMember = async (userId) => {
+    if (teamBusy) return;
+    setTeamBusy(true);
+    const requestId = selectionRequest.current;
     try {
+      setError("");
       await projectService.addTeamMember(selectedProject.id, userId);
       // Refresh team members
       const teamResponse = await projectService.getTeam(selectedProject.id);
-      setTeamMembers(teamResponse.data || []);
+      if (requestId === selectionRequest.current) setTeamMembers(teamResponse.data || []);
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.message || "Hindi ma-add ang team member.");
+    } finally {
+      setTeamBusy(false);
     }
   };
 
   const handleRemoveTeamMember = async (userId) => {
+    if (teamBusy) return;
     const member = teamMembers.find((m) => m.id === userId);
     const confirmRemove = window.confirm(
       `Sigurado ka bang gusto mong alisin si ${member?.name} mula sa team ng project?`
     );
 
     if (!confirmRemove) return;
+    setTeamBusy(true);
+    const requestId = selectionRequest.current;
 
     try {
       await projectService.removeTeamMember(selectedProject.id, userId);
       // Refresh team members
       const teamResponse = await projectService.getTeam(selectedProject.id);
-      setTeamMembers(teamResponse.data || []);
+      if (requestId === selectionRequest.current) setTeamMembers(teamResponse.data || []);
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.message || "Hindi ma-remove ang team member.");
+    } finally {
+      setTeamBusy(false);
     }
   };
 
 
 
   if (loading && projects.length === 0) {
-    return (
-      <div className="flex h-screen items-center justify-center text-slate-500">
-        Naglo-load ng projects...
-      </div>
-    );
+    return <ProjectsPageSkeleton />;
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 font-sans text-slate-800">
+    <div className="min-w-0 text-slate-800">
 
 
       <div className="flex-1 flex flex-col overflow-hidden">
        
 
-        <main className="flex-1 overflow-y-auto p-8">
+        <main className="min-w-0">
           {selectedProject ? (
             // Detail View
             <ProjectDetail
               project={selectedProject}
               teamMembers={teamMembers}
+              teamLoading={teamLoading}
+              busy={teamBusy || loading}
               onBack={handleBackToList}
               onEdit={() => handleOpenModal(selectedProject)}
               onDelete={() => handleDeleteProject(selectedProject.id)}
@@ -217,12 +247,13 @@ function ProjectsPage() {
             <div>
               <h2 className="text-2xl font-semibold">Projects</h2>
               <p className="mt-1 text-sm text-gray-500">
-                Pamahalaan ang lahat ng projects at team members.
+                Track your projects, timelines, and the people behind the work.
               </p>
 
               {error && (
                 <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
                   {error}
+                  <button onClick={fetchProjects} className="ml-3 underline">Retry</button>
                 </p>
               )}
 

@@ -3,7 +3,7 @@ import Login from "./pages/Login";
 import AccountSetup from "./pages/AccountSetup";
 import ProtectedRoute from "./components/ProtectedRoute";
 import RoleLayout from "./components/RoleLayout";
-import ComingSoon from "./pages/ComingSoon";
+import Settings from "./pages/Settings";
 
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import Users from "./pages/admin/Users";
@@ -40,7 +40,6 @@ function App() {
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="users" element={<Users />} />
           <Route path="profile" element={<Profile />} />
-          <Route path="employees" element={<ComingSoon title="Employees" />} />
           <Route path="milestones" element={<MilestonesPage />} />
           <Route path="tasks" element={<TasksPage />} />
           <Route
@@ -48,7 +47,7 @@ function App() {
           element={<DocumentsPage />}
         />
           <Route path="performance" element={<PerformancePage />} />
-          <Route path="settings" element={<ComingSoon title="Settings" />} />
+          <Route path="settings" element={<Settings />} />
           <Route path="projects" element={<ProjectsPage />} />
         </Route>
 
@@ -70,7 +69,7 @@ function App() {
           element={<DocumentsPage />}
         />
           <Route path="performance" element={<PerformancePage />} />
-          <Route path="settings" element={<ComingSoon title="Settings" />} />
+          <Route path="settings" element={<Settings />} />
           <Route path="projects" element={<ProjectsPage />} />
 
           
@@ -93,7 +92,7 @@ function App() {
             path="/employee/documents"
             element={<DocumentsPage />}
           />
-          <Route path="settings" element={<ComingSoon title="Settings" />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
 
 

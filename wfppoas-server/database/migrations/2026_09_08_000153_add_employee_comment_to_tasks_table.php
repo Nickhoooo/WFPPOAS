@@ -1,22 +1,17 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('tasks', function (Blueprint $table) {
-            $table->text('employee_comment')->nullable()->after('manager_comment');
-        });
+        // Compatibility marker: the 2026_09_07_055527 migration owns this column.
+        // Keep this filename because existing databases may have recorded it.
     }
 
     public function down(): void
     {
-        Schema::table('tasks', function (Blueprint $table) {
-            $table->dropColumn('employee_comment');
-        });
+        // No schema change to undo. The original migration removes the column.
     }
 };

@@ -88,6 +88,21 @@ class UserController extends Controller
         return response()->json($this->attachProfileMeta($user));
     }
 
+    public function photo($id)
+    {
+        $user = User::findOrFail($id);
+        $profile = match ($user->role) {
+            'admin' => $user->adminProfile,
+            'manager' => $user->managerProfile,
+            'employee' => $user->employeeProfile,
+            default => null,
+        };
+        $path = $profile?->photo;
+        $disk = \Illuminate\Support\Facades\Storage::disk('local');
+        abort_unless($path && str_starts_with($path, 'avatars/') && $disk->exists($path), 404);
+        return $disk->response($path, null, ['Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff']);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([

@@ -21,6 +21,7 @@ class Phase3BackendRulesTest extends TestCase
         $response = $this->postJson('/api/projects', [
             'project_name' => 'Project Alpha',
             'client_name' => 'Client A',
+            'location' => 'Manila',
             'status' => 'ongoing',
         ]);
 
@@ -117,6 +118,7 @@ class Phase3BackendRulesTest extends TestCase
 
     public function test_performance_snapshot_is_computed_from_completed_tasks(): void
     {
+        $this->travelTo(\Carbon\Carbon::parse('2026-09-15 12:00:00'));
         $manager = User::factory()->create(['role' => 'manager']);
         $employee = User::factory()->create(['role' => 'employee']);
 
@@ -136,6 +138,7 @@ class Phase3BackendRulesTest extends TestCase
             'status' => 'completed',
             'progress_percent' => 100,
             'deadline' => now()->subDay()->toDateString(),
+            'completed_at' => now(),
             'updated_at' => now(),
         ]);
 
@@ -146,6 +149,7 @@ class Phase3BackendRulesTest extends TestCase
             'status' => 'completed',
             'progress_percent' => 100,
             'deadline' => now()->addDay()->toDateString(),
+            'completed_at' => now(),
             'updated_at' => now(),
         ]);
 
@@ -153,7 +157,7 @@ class Phase3BackendRulesTest extends TestCase
 
         $response = $this->postJson('/api/users/' . $employee->id . '/performance/compute', [
             'project_id' => $project->id,
-            'period' => '2026-Q1',
+            'period' => '2026-09',
         ]);
 
         $response->assertStatus(201)

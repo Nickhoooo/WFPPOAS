@@ -6,6 +6,7 @@ use App\Models\AccountInvitation;
 use App\Models\AdminProfile;
 use App\Models\EmployeeProfile;
 use App\Models\ManagerProfile;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -43,6 +44,8 @@ class InvitationController extends Controller
         ], $roleRules));
 
         DB::transaction(function () use ($user, $invitation, $validated) {
+            $invitation = AccountInvitation::lockForUpdate()->findOrFail($invitation->id);
+            abort_if($invitation->accepted_at || $invitation->expires_at->isPast(), 400, 'This invitation is invalid or expired.');
             $user->update([
                 'password' => Hash::make($validated['password']),
                 'status' => 'active',
@@ -72,6 +75,9 @@ class InvitationController extends Controller
             }
 
             $invitation->update(['accepted_at' => now()]);
+            Notification::notifyAdmins($user, 'account_setup_completed',
+                "{$user->name} completed account setup. Their {$user->role} account is now active.",
+                ['subject_user_id' => $user->id]);
         });
 
         return response()->json(['message' => 'Account setup completed successfully.']);

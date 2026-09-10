@@ -1,13 +1,19 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { useSearchParams } from 'react-router-dom';
+import { Search, UserPlus, Users as UsersIcon, ShieldCheck, BriefcaseBusiness, UserRound, Eye, Pencil, RefreshCw, Power, Trash2, MoreVertical, X } from 'lucide-react';
+import UsersSkeleton from '../../components/skeletons/UsersSkeleton';
+import UserDetailsModal from './UserDetailsModal';
 
 
 const API_URL = "http://127.0.0.1:8000/api";
 
 function Users() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -27,15 +33,18 @@ function Users() {
   const [changingStatus, setChangingStatus] = useState(false);
   const [statusError, setStatusError] = useState("");
   const [viewProfileUser, setViewProfileUser] = useState(null);
-  const [profileDetails, setProfileDetails] = useState({});
-  const [profileLoading, setProfileLoading] = useState(false);
-  const [profileError, setProfileError] = useState("");
   const [newUser, setNewUser] = useState({
     name: "",
     email: "",
     role: "employee",
   });
   const user = JSON.parse(localStorage.getItem("user"));
+  useEffect(() => {
+    const targetId = searchParams.get('user');
+    if (!targetId) return;
+    setViewProfileUser({ id: targetId });
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -68,10 +77,10 @@ function Users() {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((response) => {
-        setUsers([...users, response.data]);
+        setUsers(previous => [...previous, response.data.user]);
         setNewUser({ name: "", email: "", role: "employee" });
         setShowAddUser(false);
-        setError("Invitation created. The user is inactive until account setup is completed.");
+        setSuccess("Invitation created. The user is inactive until account setup is completed.");
       })
       .catch((err) => {
         console.error(err);
@@ -187,31 +196,7 @@ function Users() {
     setOpenMenu(null);
   };
 
-  const openProfileModal = async (currentUser) => {
-    setViewProfileUser(currentUser);
-    setProfileError("");
-    setProfileLoading(true);
-    setOpenMenu(null);
-
-    const token = localStorage.getItem("token");
-    const endpointMap = {
-      admin: "admin-profile",
-      manager: "manager-profile",
-      employee: "employee-profile",
-    };
-
-    try {
-      const { data } = await axios.get(`${API_URL}/users/${currentUser.id}/${endpointMap[currentUser.role] || "employee-profile"}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setProfileDetails(data);
-    } catch (err) {
-      setProfileDetails({});
-      setProfileError(err.response?.status === 404 ? "This user does not have a profile yet." : "Unable to load profile details.");
-    } finally {
-      setProfileLoading(false);
-    }
-  };
+  const openProfileModal = (currentUser) => { setViewProfileUser(currentUser); setOpenMenu(null); };
 
   const handleChangeStatus = () => {
     setChangingStatus(true);
@@ -258,33 +243,6 @@ function Users() {
   });
 
   const countRole = (role) => users.filter((currentUser) => currentUser.role === role).length;
-  const getRoleProfileFields = (role) => {
-    if (role === "admin") {
-      return [
-        { key: "position", label: "Position" },
-        { key: "department", label: "Department" },
-        { key: "office_number", label: "Office Number" },
-        { key: "contact_number", label: "Contact Number" },
-      ];
-    }
-
-    if (role === "manager") {
-      return [
-        { key: "position", label: "Position" },
-        { key: "department", label: "Department" },
-        { key: "team_name", label: "Team Name" },
-        { key: "office_number", label: "Office Number" },
-        { key: "contact_number", label: "Contact Number" },
-      ];
-    }
-
-    return [
-      { key: "prc_license_no", label: "PRC License No." },
-      { key: "specialization", label: "Specialization" },
-      { key: "years_of_experience", label: "Years of Experience" },
-      { key: "contact_number", label: "Contact Number" },
-    ];
-  };
   const getInitials = (name) =>
     name
       ?.split(" ")
@@ -293,9 +251,11 @@ function Users() {
       .slice(0, 2)
       .toUpperCase() || "?";
 
+  if (loading) return <UsersSkeleton />;
   return (
     <>
-      <div className="flex flex-col justify-end gap-4 sm:flex-row sm:items-start">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+        <div><p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Administration</p><h1 className="mt-2 text-2xl font-semibold text-slate-900">User management</h1><p className="mt-2 text-sm text-slate-500">Manage accounts, roles, and professional profiles.</p></div>
       
         <button
           type="button"
@@ -305,22 +265,24 @@ function Users() {
           }}
           className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
         >
-          + Add User
+          <span className="inline-flex items-center gap-2"><UserPlus size={17} />Invite user</span>
         </button>
       </div>
 
       {error && (
         <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
       )}
+      {success && <p role="status" className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">{success}</p>}
 
       <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
-          { label: "Total Users", value: users.length },
-          { label: "Admins", value: countRole("admin") },
-          { label: "Managers", value: countRole("manager") },
-          { label: "Employees", value: countRole("employee") },
+          { label: "Total Users", value: users.length, icon: UsersIcon },
+          { label: "Admins", value: countRole("admin"), icon: ShieldCheck },
+          { label: "Managers", value: countRole("manager"), icon: BriefcaseBusiness },
+          { label: "Employees", value: countRole("employee"), icon: UserRound },
         ].map((card) => (
           <div key={card.label} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <card.icon size={20} className="mb-4 text-slate-400" />
             <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{card.label}</p>
             <p className="mt-2 text-2xl font-semibold text-slate-900">{card.value}</p>
           </div>
@@ -328,13 +290,14 @@ function Users() {
       </div>
 
       <div className="mt-6 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm lg:flex-row">
-        <div className="flex flex-1 items-center gap-2 rounded-lg border border-gray-200 px-3">
-          <span className="text-gray-400">⌕</span>
+        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-gray-200 px-3">
+          <Search size={18} className="text-slate-400" />
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search users..."
-            className="w-full py-2 text-sm outline-none"
+            aria-label="Search users"
+            className="min-w-0 w-full bg-transparent py-2 text-sm outline-none"
           />
         </div>
         <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)} className="rounded-lg border border-gray-200 px-3 py-2 text-sm">
@@ -350,16 +313,17 @@ function Users() {
         </select>
       </div>
 
-      <div className="mt-4 overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div className="users-list mt-4 rounded-xl border border-gray-200 bg-white shadow-sm">
         {loading ? (
           <p className="p-6 text-sm text-gray-500">Naglo-load ng users...</p>
         ) : filteredUsers.length === 0 ? (
           <p className="p-6 text-sm text-gray-500">Walang users na tumugma.</p>
         ) : (
-          <table className="w-full min-w-175 text-left text-sm">
+          <table className="users-table w-full table-fixed text-left text-sm">
+            <caption className="sr-only">User accounts and management actions</caption>
             <thead className="border-b border-gray-100 bg-gray-50 text-xs uppercase text-gray-500">
               <tr>
-                <th className="px-6 py-3">User</th>
+                <th className="w-[32%] px-6 py-3">User</th>
                 <th className="px-6 py-3">Role</th>
                 <th className="px-6 py-3">Department</th>
                 <th className="px-6 py-3">Status</th>
@@ -369,36 +333,39 @@ function Users() {
             <tbody>
               {filteredUsers.map((currentUser) => (
                 <tr key={currentUser.id} className="border-b border-gray-100 last:border-0">
-                  <td className="px-6 py-4">
+                  <td className="user-identity px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">
                         {getInitials(currentUser.name)}
                       </span>
-                      <div>
-                        <p className="font-medium text-slate-900">{currentUser.name}</p>
-                        <p className="text-xs text-gray-500">{currentUser.email}</p>
+                      <div className="min-w-0">
+                        <p className="break-words font-medium text-slate-900">{currentUser.name}</p>
+                        <p className="mt-1 break-all text-xs text-gray-500">{currentUser.email}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 capitalize">{currentUser.role}</td>
-                  <td className="px-6 py-4 text-gray-500">{currentUser.department || "-"}</td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 capitalize"><span className="user-field-label">Role</span>{currentUser.role}</td>
+                  <td className="break-words px-6 py-4 text-gray-500"><span className="user-field-label">Department</span>{currentUser.department || "Not assigned"}</td>
+                  <td className="px-6 py-4"><span className="user-field-label">Status</span>
                     <span className="inline-flex items-center gap-1.5 capitalize">
                       <span className={`h-2 w-2 rounded-full ${(currentUser.status || "inactive") === "active" ? "bg-green-500" : "bg-gray-400"}`} />
                       {currentUser.status || "inactive"}
                     </span>
                   </td>
-                  <td className="relative px-6 py-4 text-right">
+                  <td className="user-actions relative px-6 py-4 text-right">
+                    <button onClick={() => openProfileModal(currentUser)} aria-label={`View ${currentUser.name}`} title="View user" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 text-slate-500 hover:bg-slate-100"><Eye size={17} /><span className="md:hidden">View profile</span></button>
                     <button
                       type="button"
                       onClick={() => setOpenMenu(openMenu === currentUser.id ? null : currentUser.id)}
                       aria-label={`Actions for ${currentUser.name}`}
-                      className="rounded-lg px-2 py-1 text-xl leading-none text-gray-500 hover:bg-gray-100 hover:text-slate-900"
+                      aria-expanded={openMenu === currentUser.id}
+                      aria-controls={`user-actions-${currentUser.id}`}
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-2 text-sm text-gray-500 hover:bg-gray-100 hover:text-slate-900"
                     >
-                      ⋮
+                      <MoreVertical size={18} /><span className="md:hidden">Manage</span>
                     </button>
                     {openMenu === currentUser.id && (
-                      <div className="absolute right-4 top-12 z-10 w-48 rounded-lg border border-gray-200 bg-white py-1 text-left shadow-lg">
+                      <div id={`user-actions-${currentUser.id}`} onKeyDown={event => { if (event.key === 'Escape') { setOpenMenu(null); event.currentTarget.previousElementSibling?.focus(); } }} className="mt-2 w-full rounded-lg border border-gray-200 bg-white py-1 text-left shadow-lg md:absolute md:right-4 md:top-full md:z-10 md:mt-0 md:w-48">
                         {["👁 View Profile", "✏ Edit User", "🔄 Change Role", currentUser.status === "active" ? "🚫 Deactivate" : "✅ Activate", "🗑 Delete"].map((action) => (
                           <button
                             key={action}
@@ -411,10 +378,10 @@ function Users() {
                               if (action === "🗑 Delete") openDeleteModal(currentUser);
                               if (!["👁 View Profile", "✏ Edit User", "🔄 Change Role", "🚫 Deactivate", "✅ Activate", "🗑 Delete"].includes(action)) setOpenMenu(null);
                             }}
-                            disabled={["🔑 Reset Password"].includes(action)}
-                            className={`block w-full px-4 py-2 text-sm hover:bg-gray-50 ${action === "🗑 Delete" ? "text-red-600" : "text-gray-700"}`}
+                            disabled={action !== "👁 View Profile" && Number(currentUser.id) === Number(user?.id)}
+                            className={`block min-h-11 w-full px-4 py-2 text-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 ${action === "🗑 Delete" ? "text-red-600" : "text-gray-700"}`}
                           >
-                            {action}
+                            <span className="flex items-center gap-2">{action.includes('View') ? <Eye size={15} /> : action.includes('Edit') ? <Pencil size={15} /> : action.includes('Role') ? <RefreshCw size={15} /> : action.includes('Delete') ? <Trash2 size={15} /> : <Power size={15} />}{action.replace(/^[^A-Za-z]+/, '')}</span>
                           </button>
                         ))}
                       </div>
@@ -429,11 +396,11 @@ function Users() {
 
       {showAddUser && (
         <div className="fixed inset-0 z-20 flex items-center justify-center bg-slate-900/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-xl bg-white p-4 sm:p-6 shadow-xl">
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="text-lg font-semibold text-slate-900">Add User</h3>
-                <p className="mt-1 text-sm text-gray-500">Create a new account.</p>
+                <p className="mt-1 text-sm text-gray-500">Send an invitation so the user can set up their account.</p>
               </div>
               <button
                 type="button"
@@ -441,7 +408,7 @@ function Users() {
                 aria-label="Close add user form"
                 className="text-xl text-gray-400 hover:text-gray-700"
               >
-                ×
+                <X size={20} />
               </button>
             </div>
 
@@ -512,7 +479,7 @@ function Users() {
 
       {editUser && (
         <div className="fixed inset-0 z-20 flex items-center justify-center bg-slate-900/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-xl bg-white p-4 sm:p-6 shadow-xl">
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="text-lg font-semibold text-slate-900">
@@ -526,7 +493,7 @@ function Users() {
                 aria-label="Close edit user form"
                 className="text-xl text-gray-400 hover:text-gray-700"
               >
-                ×
+                <X size={20} />
               </button>
             </div>
 
@@ -610,57 +577,11 @@ function Users() {
         </div>
       )}
 
-      {viewProfileUser && (
-        <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-900/40 p-4">
-          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900">User Profile</h3>
-                <p className="mt-1 text-sm text-gray-500">{viewProfileUser.name} • {viewProfileUser.role}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setViewProfileUser(null)}
-                aria-label="Close profile details"
-                className="text-xl text-gray-400 hover:text-gray-700"
-              >
-                ×
-              </button>
-            </div>
-
-            {profileLoading ? (
-              <p className="mt-5 text-sm text-gray-500">Loading profile...</p>
-            ) : profileError ? (
-              <p className="mt-5 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{profileError}</p>
-            ) : (
-              <div className="mt-5 space-y-3">
-                {getRoleProfileFields(viewProfileUser.role).map((field) => (
-                  <div key={field.key} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-                    <p className="text-[11px] uppercase tracking-wide text-gray-500">{field.label}</p>
-                    <p className="mt-1 text-sm font-medium text-slate-800">
-                      {profileDetails[field.key] ?? "Not set"}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="mt-6 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setViewProfileUser(null)}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {viewProfileUser && <UserDetailsModal key={viewProfileUser.id} userId={viewProfileUser.id} onClose={() => setViewProfileUser(null)} />}
 
       {deleteUser && (
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-900/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-xl bg-white p-4 sm:p-6 shadow-xl">
             <h3 className="text-lg font-semibold text-slate-900">Delete User</h3>
             <p className="mt-3 text-sm leading-relaxed text-gray-600">
               Are you sure you want to delete <strong>{deleteUser.name}</strong>? This action cannot be undone.
@@ -694,7 +615,7 @@ function Users() {
 
       {statusUser && (
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-900/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-xl bg-white p-4 sm:p-6 shadow-xl">
             <h3 className="text-lg font-semibold text-slate-900">
               {statusUser.status === "active" ? "Deactivate User" : "Activate User"}
             </h3>
@@ -732,3 +653,4 @@ function Users() {
 }
 
 export default Users;
+

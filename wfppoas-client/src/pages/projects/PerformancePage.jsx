@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import PerformancePageSkeleton, { PerformanceMetricsSkeleton, PerformanceHistorySkeleton } from '../../components/skeletons/PerformancePageSkeleton';
 import {
   Trophy,
   Users,
@@ -251,13 +252,7 @@ function PerformancePage() {
   // Loading
   // --------------------------------------------------
   if (loading) {
-    return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <div className="text-sm text-slate-500">
-          Loading performance data...
-        </div>
-      </div>
-    );
+    return <PerformancePageSkeleton />;
   }
 
   return (
@@ -321,7 +316,7 @@ function PerformancePage() {
       {/* ==================================================
           OVERVIEW CARDS
       ================================================== */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      {overviewLoading ? <PerformanceMetricsSkeleton /> : <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {/* Top Performer */}
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
@@ -405,11 +400,12 @@ function PerformancePage() {
         </div>
       </div>
 
+      }
       {/* ==================================================
           EMPLOYEE RANKING
       ================================================== */}
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-100 px-6 py-5">
+        <div className="border-b border-gray-100 px-4 py-4 md:px-6 md:py-5">
           <h3 className="text-sm font-semibold text-slate-800">
             Employee Ranking
           </h3>
@@ -420,10 +416,10 @@ function PerformancePage() {
           </p>
         </div>
 
-        {overview?.ranking?.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
+        {overviewLoading ? <PerformanceHistorySkeleton /> : overview?.ranking?.length > 0 ? (
+          <div className="min-w-0 md:overflow-x-auto m-1.5">
+            <table className="block w-full text-sm md:table">
+              <thead className="hidden md:table-header-group">
                 <tr className="border-b border-gray-100 text-left text-xs uppercase tracking-wide text-gray-400">
                   <th className="px-6 py-3 font-medium">
                     Rank
@@ -451,39 +447,43 @@ function PerformancePage() {
                 </tr>
               </thead>
 
-              <tbody>
+              <tbody className="block divide-y divide-gray-100 md:table-row-group md:divide-y-0">
                 {overview.ranking.map((record, index) => (
                   <tr
                     key={record.id}
-                    className="border-b border-gray-50 last:border-0 hover:bg-slate-50"
+                    className="grid grid-cols-3 gap-x-3 gap-y-4 p-4 md:table-row md:border-b md:border-gray-50 md:p-0 md:last:border-0 md:hover:bg-slate-50"
                   >
-                    <td className="px-6 py-4">
+                    <td className="block md:table-cell md:px-6 md:py-4">
                       <span className="font-semibold text-slate-700">
                         #{index + 1}
                       </span>
                     </td>
 
-                    <td className="px-6 py-4">
-                      <p className="font-medium text-slate-800">
+                    <td className="col-span-2 min-w-0 md:table-cell md:px-6 md:py-4">
+                      <p className="break-words font-medium text-slate-800">
                         {record.user?.name || "Unknown Employee"}
                       </p>
                     </td>
 
-                    <td className="px-6 py-4 font-medium text-slate-700">
+                    <td className="min-w-0 font-medium text-slate-700 md:table-cell md:px-6 md:py-4">
+                      <span className="mb-1 block text-xs font-normal text-gray-500 md:hidden">Completion</span>
                       {record.completion_rate}%
                     </td>
 
-                    <td className="px-6 py-4 text-slate-600">
+                    <td className="min-w-0 text-slate-600 md:table-cell md:px-6 md:py-4">
+                      <span className="mb-1 block text-xs text-gray-500 md:hidden">On-Time</span>
                       {record.on_time_rate}%
                     </td>
 
-                    <td className="px-6 py-4 text-slate-600">
+                    <td className="min-w-0 text-slate-600 md:table-cell md:px-6 md:py-4">
+                      <span className="mb-1 block text-xs text-gray-500 md:hidden">Revisions</span>
                       {record.revision_count}
                     </td>
 
-                    <td className="px-6 py-4">
+                    <td className="col-span-3 flex items-center justify-between gap-3 border-t border-gray-100 pt-3 md:table-cell md:border-0 md:px-6 md:py-4">
+                      <span className="text-xs text-gray-500 md:hidden">Status</span>
                       <span
-                        className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                        className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${
                           Number(record.completion_rate) >= 90
                             ? "bg-green-50 text-green-700"
                             : Number(record.completion_rate) >= 75
@@ -610,9 +610,7 @@ function PerformancePage() {
 
             {/* Metrics */}
             {recordsLoading ? (
-              <div className="mt-6 text-sm text-gray-500">
-                Loading employee performance...
-              </div>
+              <PerformanceHistorySkeleton />
             ) : latestRecord ? (
               <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {/* Completion */}
@@ -831,9 +829,7 @@ function PerformancePage() {
             </div>
 
             {recordsLoading ? (
-              <div className="px-6 py-8 text-sm text-gray-500">
-                Loading performance history...
-              </div>
+              <PerformanceHistorySkeleton />
             ) : records.length === 0 ? (
               <div className="px-6 py-10 text-center">
                 <CalendarDays

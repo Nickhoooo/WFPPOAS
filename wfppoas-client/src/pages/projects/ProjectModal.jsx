@@ -5,6 +5,7 @@ function ProjectModal({ isOpen, project, onClose, onSubmit, loading, error }) {
   const [formData, setFormData] = useState({
     project_name: "",
     client_name: "",
+    location: "",
     description: "",
     budget: "",
     start_date: "",
@@ -22,9 +23,9 @@ function ProjectModal({ isOpen, project, onClose, onSubmit, loading, error }) {
       client_name: project.client_name || "",
       location: project.location || "",
       description: project.description || "",
-      budget: project.budget || "",
-      start_date: project.start_date || "",
-      end_date: project.end_date || "",
+      budget: project.budget ?? "",
+      start_date: project.start_date?.slice(0, 10) || "",
+      end_date: project.end_date?.slice(0, 10) || "",
       status: project.status || "ongoing",
     });
     } else {
@@ -75,11 +76,11 @@ function ProjectModal({ isOpen, project, onClose, onSubmit, loading, error }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    if (loading || !validateForm()) return;
 
     const submitData = {
       ...formData,
-      budget: formData.budget ? Number(formData.budget) : null,
+      budget: formData.budget === "" || formData.budget == null ? null : Number(formData.budget),
     };
 
     onSubmit(submitData);
@@ -90,15 +91,16 @@ function ProjectModal({ isOpen, project, onClose, onSubmit, loading, error }) {
   const isEditing = !!project;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+    <div role="dialog" aria-modal="true" aria-labelledby="project-modal-title" className="fixed inset-0 bg-slate-950/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-slate-900">
-            {isEditing ? "✏️ Edit Project" : "✨ New Project"}
+          <h2 id="project-modal-title" className="text-xl font-semibold text-slate-900">
+            {isEditing ? "Edit project" : "New project"}
           </h2>
           <button
             onClick={onClose}
+            aria-label="Close project form"
             disabled={loading}
             className="text-gray-400 hover:text-gray-600 font-bold text-xl disabled:opacity-50"
           >
@@ -164,6 +166,7 @@ function ProjectModal({ isOpen, project, onClose, onSubmit, loading, error }) {
         <input
           type="text"
           name="location"
+          disabled={loading}
           value={formData.location}
           onChange={handleChange}
           placeholder="e.g. Quezon City, Metro Manila"
@@ -200,7 +203,7 @@ function ProjectModal({ isOpen, project, onClose, onSubmit, loading, error }) {
               onChange={handleChange}
               placeholder="e.g., 5000000"
               disabled={loading}
-              step="1"
+              step="0.01"
               min="0"
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-400 focus:border-blue-500 focus:outline-none disabled:bg-gray-100"
             />

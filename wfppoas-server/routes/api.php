@@ -41,6 +41,12 @@ Route::post('/invitations/{token}/setup', [InvitationController::class, 'setup']
 // =====================================================
 
 Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/project-search', [ProjectController::class, 'search']);
+    Route::get('/me/account', fn (\Illuminate\Http\Request $request) => response()->json($request->user()->only(['name', 'email', 'role', 'status'])));
+    Route::post('/me/password', [AuthController::class, 'changePassword'])->middleware('throttle:6,1');
+    Route::get('/me/profile', [\App\Http\Controllers\MyProfileController::class, 'show']);
+    Route::post('/me/profile', [\App\Http\Controllers\MyProfileController::class, 'save']);
+    Route::get('/me/profile/photo', [\App\Http\Controllers\MyProfileController::class, 'photo']);
 
     Route::post('/logout', [AuthController::class, 'logout']);
 
@@ -59,6 +65,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Users
         Route::get('/users', [UserController::class, 'index']);
+        Route::get('/users/{id}/photo', [UserController::class, 'photo']);
         Route::post('/users/invite', [UserController::class, 'invite']);
         Route::get('/users/{id}', [UserController::class, 'show']);
         Route::post('/users', [UserController::class, 'store']);
@@ -311,6 +318,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // PROFILES
     // ---------------------------------------------
 
+    Route::middleware(\App\Http\Middleware\AuthorizeProfile::class)->group(function () {
     Route::get(
         '/users/{userId}/employee-profile',
         [EmployeeProfileController::class, 'show']
@@ -357,6 +365,7 @@ Route::middleware('auth:sanctum')->group(function () {
         '/users/{userId}/manager-profile',
         [ManagerProfileController::class, 'update']
     );
+    });
 
 
     // ---------------------------------------------

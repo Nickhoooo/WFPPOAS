@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Search,
+  Menu,
   Bell,
   ChevronDown,
   User,
@@ -9,8 +9,10 @@ import {
   Check,
 } from "lucide-react";
 import { notificationService } from "../services/api";
+import ProjectSearch from "./ProjectSearch";
+import ProfileAvatar from "./ProfileAvatar";
 
-function Header({ userName, onLogout }) {
+function Header({ userName, onLogout, onOpenMenu, menuOpen = false }) {
   const navigate = useNavigate();
 
   const [showMenu, setShowMenu] = useState(false);
@@ -138,14 +140,18 @@ function Header({ userName, onLogout }) {
       );
     }
 
-    // Navigate to the actual task
-    if (notification.project_id && notification.task_id) {
+    if (['account_setup_completed', 'password_reset', 'password_changed'].includes(notification.type) && user.role === 'admin') {
+      navigate(notification.subject_user_id ? `/admin/users?user=${notification.subject_user_id}` : '/admin/users');
+    } else if (['project_created', 'project_completed'].includes(notification.type)) {
+      navigate(`/${user.role}/projects${notification.project_id ? `?project=${notification.project_id}` : ''}`);
+    } else if (notification.project_id && notification.task_id) {
       navigate(
-        `/${userRole}/tasks?project=${notification.project_id}&task=${notification.task_id}`
+        `/${user.role}/tasks?project=${notification.project_id}&task=${notification.task_id}`
       );
 
       setShowNotifications(false);
     }
+    setShowNotifications(false);
   } catch (error) {
     console.error(
       "Failed to handle notification:",
@@ -192,48 +198,24 @@ function Header({ userName, onLogout }) {
       {/* =========================
           HEADER
       ========================= */}
-      <header className="h-20 bg-white border-b border-gray-200 px-8 flex items-center justify-between">
+      <header className="h-20 shrink-0 gap-3 bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+        <button type="button" onClick={onOpenMenu} aria-label="Open navigation" aria-controls="mobile-navigation" aria-expanded={menuOpen} className="shrink-0 rounded-lg p-2 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500 lg:hidden"><Menu size={24} /></button>
         
         {/* LEFT SIDE */}
-        <div className="flex flex-col">
-          <h2 className="text-lg font-semibold text-slate-800">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <h2 className="truncate text-sm sm:text-lg font-semibold text-slate-800">
             Welcome back
           </h2>
 
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="truncate text-xs text-slate-500 mt-0.5">
             {userName}
           </p>
         </div>
 
         {/* RIGHT SIDE */}
-        <div className="flex items-center gap-4">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-4">
 
-          {/* SEARCH */}
-          <div className="relative hidden md:block">
-            <Search
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-
-            <input
-              type="text"
-              placeholder="Search projects..."
-              className="
-                w-72 h-10 pl-10 pr-4
-                text-sm
-                bg-slate-50
-                border border-slate-200
-                rounded-xl
-                text-slate-700
-                placeholder:text-slate-400
-                focus:outline-none
-                focus:ring-2
-                focus:ring-slate-800/10
-                focus:border-slate-300
-                transition
-              "
-            />
-          </div>
+          <ProjectSearch role={user.role} />
 
           {/* =========================
               NOTIFICATIONS
@@ -294,12 +276,12 @@ function Header({ userName, onLogout }) {
             {showNotifications && (
               <div
                 className="
-                  absolute
-                  right-0
-                  top-full
+                  fixed sm:absolute
+                  right-3 sm:right-0
+                  top-20 sm:top-full
                   z-50
                   mt-2
-                  w-96
+                  w-96 max-w-[calc(100vw-1.5rem)]
                   overflow-hidden
                   rounded-xl
                   border border-slate-200
@@ -478,12 +460,7 @@ function Header({ userName, onLogout }) {
               "
             >
               {/* AVATAR */}
-              <div className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center">
-                <User
-                  size={18}
-                  className="text-white"
-                />
-              </div>
+              <ProfileAvatar className="h-9 w-9" />
 
               {/* USER INFO */}
               <div className="text-left hidden sm:block">
@@ -680,3 +657,4 @@ function Header({ userName, onLogout }) {
 }
 
 export default Header;
+

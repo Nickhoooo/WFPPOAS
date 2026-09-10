@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { employeeService } from "../../services/api";
 
 function MyTeam() {
+  const [searchParams] = useSearchParams();
+  const targetProject = searchParams.get("project");
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -24,6 +27,12 @@ function MyTeam() {
 
     fetchMyProjects();
   }, []);
+
+  useEffect(() => {
+    if (!loading && targetProject) {
+      document.getElementById(`team-project-${targetProject}`)?.scrollIntoView({ block: "center" });
+    }
+  }, [loading, targetProject]);
 
   if (loading) {
     return (
@@ -79,7 +88,8 @@ function MyTeam() {
           return (
             <div
               key={project.id}
-              className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
+              id={`team-project-${project.id}`}
+              className={`rounded-xl border border-gray-200 bg-white p-6 shadow-sm ${String(project.id) === targetProject ? "ring-2 ring-blue-400" : ""}`}
             >
               <div className="border-b border-gray-100 pb-4">
                 <h2 className="text-lg font-semibold text-slate-800">

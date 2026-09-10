@@ -13,19 +13,11 @@ class ProjectOwnershipTest extends TestCase
     {
         parent::setUp();
 
-        // Isolate this suite from MySQL and unrelated duplicate task migrations.
+        // Always isolate these tests from the application database.
         config(['database.default' => 'sqlite', 'database.connections.sqlite.database' => ':memory:']);
         app('db')->purge('sqlite');
 
-        foreach ([
-            '0001_01_01_000000_create_users_table.php',
-            '2026_08_21_092313_create_projects_table.php',
-            '2026_08_31_025141_create_project_team_table.php',
-            '2026_09_01_000001_add_unique_index_to_project_team_table.php',
-            '2026_09_07_140443_add_location_to_projects_table.php',
-        ] as $migration) {
-            (require database_path('migrations/'.$migration))->up();
-        }
+        $this->artisan('migrate', ['--force' => true])->assertExitCode(0);
     }
 
     public static function actors(): array

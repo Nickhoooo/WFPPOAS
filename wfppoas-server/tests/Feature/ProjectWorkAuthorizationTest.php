@@ -8,8 +8,6 @@ use App\Models\PerformanceRecord;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -20,30 +18,8 @@ class ProjectWorkAuthorizationTest extends TestCase
         parent::setUp();
         config(['database.default' => 'sqlite', 'database.connections.sqlite.database' => ':memory:']);
         app('db')->purge('sqlite');
-        foreach ([
-            '0001_01_01_000000_create_users_table.php',
-            '2026_08_21_092313_create_projects_table.php',
-            '2026_08_21_093551_create_milestones_table.php',
-            '2026_08_21_094949_create_tasks_table.php',
-            '2026_08_31_025141_create_project_team_table.php',
-            '2026_08_21_100743_create_documents_table.php',
-            '2026_08_21_101609_create_performance_records_table.php',
-            '2026_09_07_055527_add_employee_comment_to_tasks_table.php',
-            '2026_09_08_145856_add_completed_at_to_tasks_table.php',
-        ] as $migration) {
-            (require database_path('migrations/'.$migration))->up();
-        }
-        // The existing notification creation migration alters a missing table.
-        // Supply the base table only in this isolated test database.
-        Schema::create('notifications', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained();
-            $table->text('message');
-            $table->string('type');
-            $table->boolean('is_read')->default(false);
-            $table->timestamps();
-        });
-        (require database_path('migrations/2026_09_08_123600_add_project_id_and_task_id_to_notifications_table.php'))->up();
+        $this->artisan('migrate', ['--force' => true])->assertExitCode(0);
+
     }
 
     public function test_employee_access_requires_assignment_and_current_membership(): void

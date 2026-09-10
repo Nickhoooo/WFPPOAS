@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import ProjectCard from "./ProjectCard";
+import { ProjectCardsSkeleton } from "../../components/skeletons/ProjectsPageSkeleton";
 
 function ProjectsList({
   projects,
@@ -23,12 +24,13 @@ function ProjectsList({
   return (
     <div className="mt-6 space-y-6">
       {/* Search Bar & Filters */}
-      <div className="space-y-4">
+      <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
         {/* Search Bar */}
-        <div className="flex gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row">
           <input
             type="text"
-            placeholder="🔍 Hanapin ang project o client..."
+            placeholder="Search project or client…"
+            aria-label="Search projects"
             value={searchTerm}
             onChange={(e) => onSearch(e.target.value)}
             className="flex-1 rounded-lg border border-gray-200 px-4 py-2 text-sm placeholder-gray-400 focus:border-blue-500 focus:outline-none"
@@ -36,7 +38,7 @@ function ProjectsList({
           {(userRole === "manager" || userRole === "admin") && (
             <button
               onClick={onCreateProject}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition"
+              className="shrink-0 rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white hover:bg-slate-800 transition"
             >
               + New Project
             </button>
@@ -44,15 +46,16 @@ function ProjectsList({
         </div>
 
         {/* Status Filter Buttons */}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {statusOptions.map((option) => (
             <button
               key={option.value}
+              aria-pressed={statusFilter === option.value}
               onClick={() => onFilterStatus(option.value)}
               className={`px-3 py-1 rounded-full text-sm font-medium transition ${
                 statusFilter === option.value
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  ? "bg-slate-900 text-white"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
               {option.label}
@@ -63,9 +66,7 @@ function ProjectsList({
 
       {/* Projects Grid */}
       {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <p className="text-gray-500">Naglo-load ng projects...</p>
-        </div>
+        <ProjectCardsSkeleton />
       ) : projects.length === 0 ? (
         <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
           <p className="text-gray-500">

@@ -2,13 +2,16 @@ import { useState } from "react";
 import PropTypes from "prop-types";
 import { projectService } from "../../services/api";
 
-function TeamMemberSection({ projectId, teamMembers, canManage, managerId, onAddMember, onRemoveMember }) {
+function TeamMemberSection({ projectId, teamMembers, canManage, managerId, busy, onAddMember, onRemoveMember }) {
   const [showAddDropdown, setShowAddDropdown] = useState(false);
   const [availableEmployees, setAvailableEmployees] = useState([]);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
+  const [error, setError] = useState("");
 
   // Fetch available employees (those not in team)
   const handleShowAddDropdown = async () => {
+  if (loadingEmployees || busy) return;
+  setError("");
   if (showAddDropdown) {
     setShowAddDropdown(false);
     return;
@@ -22,6 +25,7 @@ function TeamMemberSection({ projectId, teamMembers, canManage, managerId, onAdd
     setAvailableEmployees(response.data || []);
     setShowAddDropdown(true);
   } catch (error) {
+    setError(error.response?.data?.message || 'Unable to load available employees. Try again.');
     console.error("Failed to fetch available employees:", error);
   } finally {
     setLoadingEmployees(false);
@@ -35,13 +39,15 @@ function TeamMemberSection({ projectId, teamMembers, canManage, managerId, onAdd
         {canManage && (
           <button
             onClick={handleShowAddDropdown}
+            disabled={loadingEmployees || busy}
             className="rounded-lg bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 transition"
           >
-            + Add Member
+            {loadingEmployees ? 'Loading employees…' : '+ Add member'}
           </button>
         )}
       </div>
 
+      {error && <p role="alert" className="mb-3 text-sm text-red-600">{error}</p>}
       {/* Team Members List */}
       <div className="space-y-2">
         {teamMembers.length === 0 ? (
@@ -61,6 +67,8 @@ function TeamMemberSection({ projectId, teamMembers, canManage, managerId, onAdd
               {canManage && Number(member.id) !== Number(managerId) && (
                 <button
                   onClick={() => onRemoveMember(member.id)}
+                  disabled={busy}
+                  aria-label={`Remove ${member.name} from team`}
                   className="text-red-600 hover:text-red-700 font-bold transition"
                   title="Remove from team"
                 >
@@ -91,7 +99,7 @@ function TeamMemberSection({ projectId, teamMembers, canManage, managerId, onAdd
             defaultValue=""
           >
             <option value="" disabled>
-              Select an employee
+              {availableEmployees.length ? 'Select an employee' : 'No available employees'}
             </option>
 
             {availableEmployees.map((employee) => (
@@ -116,6 +124,7 @@ TeamMemberSection.propTypes = {
   projectId: PropTypes.number.isRequired,
   teamMembers: PropTypes.array.isRequired,
   canManage: PropTypes.bool.isRequired,
+  busy: PropTypes.bool,
   managerId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
   onAddMember: PropTypes.func.isRequired,
   onRemoveMember: PropTypes.func.isRequired,

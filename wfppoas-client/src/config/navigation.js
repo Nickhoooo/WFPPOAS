@@ -26,14 +26,9 @@ export const navItems = {
       section: "WORKFORCE",
       items: [
         {
-          icon: UsersIcon,
+          icon: EmployeesIcon,
           label: "Users",
           path: "/admin/users",
-        },
-        {
-          icon: EmployeesIcon,
-          label: "Employees",
-          path: "/admin/employees",
         },
       ],
     },

@@ -1,2 +1,48 @@
 @import "tailwindcss";
 
+.user-field-label { display: none; }
+@media (max-width: 767px) {
+  .users-list { border: 0; background: transparent !important; box-shadow: none; }
+  .users-table, .users-table tbody { display: block; width: 100%; }
+  .users-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .users-table tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 1rem; padding: 1rem; border: 1px solid #e2e8f0 !important; border-radius: 1rem; background: #fff; }
+  .users-table td { display: block; min-width: 0; padding: .5rem 0; }
+  .users-table .user-identity { grid-column: 1 / -1; padding-bottom: 1rem; }
+  .users-table .user-actions { grid-column: 1 / -1; border-top: 1px solid #e2e8f0; margin-top: .5rem; padding-top: .75rem; text-align: left; }
+  .user-field-label { display: block; margin-bottom: .25rem; font-size: .6875rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: .04em; }
+  html[data-theme="dark"] .users-table tr { background: #1e293b; border-color: #475569 !important; }
+  html[data-theme="dark"] .users-table .user-actions { border-color: #475569; }
+  html[data-theme="dark"] .user-field-label { color: #aebed2; }
+}
+
+/* Navigation has its own palette so it stays distinct from page surfaces. */
+.app-sidebar { background: #091222; color: #d2deee; border-right: 1px solid #334155; }
+.sidebar-link:hover { background: #192b43; color: #fff; }
+.sidebar-link-active { background: #17344f; color: #fff; box-shadow: inset 3px 0 #38bdf8; }
+.sidebar-drawer { margin: 0; padding: 0; height: 100dvh; max-height: 100dvh; width: 16rem; max-width: 85vw; border: 0; background: #091222; color: #d2deee; }
+.sidebar-drawer .app-sidebar { width: 100%; }
+.sidebar-drawer::backdrop { background: rgb(2 6 23 / 65%); }
+
+/* Shared palette for existing utility-based pages, including dialogs and skeletons.
+   Dark action buttons/sidebar keep their original dark background and white text. */
+html[data-theme="dark"] { background: #0f172a; color: #e2e8f0; }
+html[data-theme="dark"] body { background: #0f172a; }
+html[data-theme="dark"] :is(.bg-white, .bg-white\/95) { background-color: #1e293b; }
+html[data-theme="dark"] :is(.bg-slate-50, .bg-gray-50, .bg-gray-100, .bg-slate-100) { background-color: #0f172a; }
+html[data-theme="dark"] :is(.bg-slate-200, .bg-gray-200) { background-color: #334155; }
+html[data-theme="dark"] :is(.text-slate-900, .text-slate-800, .text-slate-700, .text-gray-900, .text-gray-800, .text-gray-700, .text-black) { color: #f1f5f9; }
+html[data-theme="dark"] :is(.text-slate-600, .text-slate-500, .text-slate-400, .text-gray-600, .text-gray-500, .text-gray-400) { color: #aebed2; }
+html[data-theme="dark"] :is(.border-slate-100, .border-slate-200, .border-slate-300, .border-gray-100, .border-gray-200, .border-gray-300, .divide-gray-200 > :not(:last-child)) { border-color: #475569; }
+html[data-theme="dark"] :is(.hover\:bg-slate-50, .hover\:bg-slate-100, .hover\:bg-gray-50, .hover\:bg-gray-100):hover { background-color: #334155; }
+html[data-theme="dark"] :is(.bg-blue-50, .bg-blue-100, .bg-indigo-50, .bg-indigo-100) { background-color: #172e50; }
+html[data-theme="dark"] :is(.text-blue-600, .text-blue-700, .text-blue-800, .text-indigo-600, .text-indigo-700) { color: #93c5fd; }
+html[data-theme="dark"] :is(.bg-green-50, .bg-green-100, .bg-emerald-50, .bg-emerald-100) { background-color: #123c32; }
+html[data-theme="dark"] :is(.text-green-600, .text-green-700, .text-green-800, .text-emerald-600, .text-emerald-700) { color: #86efac; }
+html[data-theme="dark"] :is(.bg-red-50, .bg-red-100, .bg-rose-50, .bg-rose-100) { background-color: #471f2c; }
+html[data-theme="dark"] :is(.text-red-500, .text-red-600, .text-red-700, .text-red-800, .text-rose-600) { color: #fda4af; }
+html[data-theme="dark"] :is(.bg-yellow-50, .bg-yellow-100, .bg-amber-50, .bg-amber-100, .bg-orange-50, .bg-orange-100) { background-color: #44351c; }
+html[data-theme="dark"] :is(.text-yellow-600, .text-yellow-700, .text-yellow-800, .text-amber-600, .text-amber-700, .text-orange-600) { color: #fcd34d; }
+html[data-theme="dark"] :is(input, select, textarea) { color-scheme: dark; }
+html[data-theme="dark"] :is(.bg-violet-50, .bg-purple-50) { background-color: #312348; }
+html[data-theme="dark"] :is(.text-violet-600, .text-purple-600) { color: #c4b5fd; }
+html[data-theme="dark"] :is(.text-orange-700, .text-amber-500) { color: #fcd34d; }
