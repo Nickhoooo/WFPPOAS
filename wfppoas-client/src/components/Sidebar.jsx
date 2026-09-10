@@ -26,6 +26,7 @@ function Sidebar({ navItems, onNavigate, mobile = false }) {
               <NavLink
                 key={item.label}
                 to={item.path}
+                data-tour={`nav-${item.path.split("/").pop()}`}
                 onClick={onNavigate}
                 className={({ isActive }) => `sidebar-link w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition focus-visible:outline-2 focus-visible:outline-sky-400 ${isActive ? 'sidebar-link-active' : ''}`}
               >

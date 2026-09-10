@@ -4,7 +4,7 @@ import axios from "axios";
 // API Configuration
 // ─────────────────────────────────────────────────────
 
-const API_URL = "http://127.0.0.1:8000/api";
+import { API_URL } from "../config/api";
 
 // Create an axios instance with base configuration
 const apiClient = axios.create({

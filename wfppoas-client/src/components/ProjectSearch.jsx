@@ -70,7 +70,7 @@ export default function ProjectSearch({ role }) {
     <div ref={root} className="relative" onBlur={(event) => {
       if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
     }}>
-      <button ref={trigger} type="button" aria-label="Search projects" aria-expanded={open}
+      <button ref={trigger} type="button" data-tour="search" aria-label="Search projects" aria-expanded={open}
         aria-controls="header-project-search" onClick={() => { changeQuery(""); setOpen(!open); }}
         className="flex h-10 w-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2.5 text-slate-500 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500 xl:w-64">
         <Search size={18} className="shrink-0" />

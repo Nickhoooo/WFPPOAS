@@ -1,5 +1,6 @@
 import { Outlet } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
+import GuidedTour from "./GuidedTour";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { navItems } from "../config/navigation";
@@ -25,6 +26,7 @@ function RoleLayout({ role }) {
 
   return (
     <div className="flex h-dvh overflow-hidden bg-gray-50 font-sans text-slate-800">
+      <GuidedTour key={`${user?.id}-${role}`} userId={user?.id} role={role} />
       {/* Sidebar */}
       <div className="hidden h-full lg:block"><Sidebar navItems={navItems[role]} /></div>
       <dialog ref={drawer} id="mobile-navigation" aria-label="Navigation" onClose={() => setMenuOpen(false)} onClick={event => { if (event.target === event.currentTarget) closeMenu(); }} className="sidebar-drawer">

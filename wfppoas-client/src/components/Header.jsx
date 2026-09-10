@@ -199,7 +199,7 @@ function Header({ userName, onLogout, onOpenMenu, menuOpen = false }) {
           HEADER
       ========================= */}
       <header className="h-20 shrink-0 gap-3 bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-        <button type="button" onClick={onOpenMenu} aria-label="Open navigation" aria-controls="mobile-navigation" aria-expanded={menuOpen} className="shrink-0 rounded-lg p-2 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500 lg:hidden"><Menu size={24} /></button>
+        <button type="button" onClick={onOpenMenu} data-tour="navigation" aria-label="Open navigation" aria-controls="mobile-navigation" aria-expanded={menuOpen} className="shrink-0 rounded-lg p-2 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500 lg:hidden"><Menu size={24} /></button>
         
         {/* LEFT SIDE */}
         <div className="flex min-w-0 flex-1 flex-col">
@@ -241,7 +241,7 @@ function Header({ userName, onLogout, onOpenMenu, menuOpen = false }) {
                 hover:text-slate-800
                 transition
               "
-              title="Notifications"
+              data-tour="notifications" title="Notifications"
             >
               <Bell size={19} />
 

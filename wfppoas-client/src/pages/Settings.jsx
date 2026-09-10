@@ -43,6 +43,7 @@ export default function Settings() {
   const card = 'rounded-2xl border border-slate-200 bg-white p-6 shadow-sm';
   return <div className="mx-auto max-w-4xl space-y-6">
     <div><h1 className="text-2xl font-bold text-slate-900">Settings</h1><p className="mt-1 text-slate-500">Manage your appearance and account security.</p></div>
+    <section className={card}><h2 className="text-lg font-semibold">Getting started</h2><p className="mt-1 text-sm text-slate-500">Take a quick tour of your workspace.</p><button type="button" onClick={() => window.dispatchEvent(new Event("wfppoas-replay-tour"))} className="mt-4 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white">Replay tour</button></section>
     <section className={card}><h2 className="text-lg font-semibold">Appearance</h2><p className="mt-1 text-sm text-slate-500">Default: System. Your choice is saved in this browser and applies to every account using it.</p>
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">{[['light', Sun, 'Light'], ['dark', Moon, 'Dark'], ['system', Monitor, 'System']].map(([value, Icon, label]) => <button key={value} type="button" aria-pressed={theme === value} onClick={() => setTheme(value)} className={`flex items-center justify-center gap-3 rounded-xl border p-4 font-medium ${theme === value ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}><Icon size={20} />{label}</button>)}</div>
     </section>

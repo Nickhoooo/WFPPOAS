@@ -6,7 +6,7 @@ import UsersSkeleton from '../../components/skeletons/UsersSkeleton';
 import UserDetailsModal from './UserDetailsModal';
 
 
-const API_URL = "http://127.0.0.1:8000/api";
+import { API_URL } from "../../config/api";
 
 function Users() {
   const [searchParams, setSearchParams] = useSearchParams();

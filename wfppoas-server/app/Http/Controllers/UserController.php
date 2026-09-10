@@ -70,7 +70,7 @@ class UserController extends Controller
             return $user;
         });
 
-        $setupUrl = rtrim(env('CLIENT_URL', 'http://localhost:5173'), '/')
+        $setupUrl = rtrim(config('app.client_url'), '/')
             . '/account-setup?token=' . urlencode($plainToken);
 
         Mail::to($user->email)->send(new UserInvitationMail($user, $setupUrl));
